@@ -1,6 +1,8 @@
 // components/AddHoldingModal.tsx
+"use client";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { X } from "lucide-react";
+import Image from "next/image";
 
 interface Coin {
   id: string;
@@ -151,7 +153,7 @@ export default function AddHoldingModal({
                       }}
                       className="p-3 hover:bg-gray-700 cursor-pointer flex items-center gap-3"
                     >
-                      <img src={c.image} alt="" className="w-6 h-6" />
+                      <Image src={c.image} alt={c.name} width={24} height={24} />
                       <div>
                         <p>{c.name}</p>
                         <p className="text-sm text-gray-400">
@@ -169,7 +171,7 @@ export default function AddHoldingModal({
         {selectedCoin && (
           <>
             <div className="mb-4 flex items-center gap-3 bg-gray-700 p-3 rounded">
-              <img src={selectedCoin.image} alt="" className="w-8 h-8" />
+              <Image src={selectedCoin.image} alt={selectedCoin.name} width={32} height={32} />
               <div>
                 <p>{selectedCoin.name}</p>
                 <p className="text-sm text-gray-400">

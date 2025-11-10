@@ -1,15 +1,14 @@
 "use client";
-import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
+import Image from "next/image";
 import {
-  Search,
   Plus,
   X,
   Edit2,
   Trash2,
   LogOut,
   User,
-  Star,
 } from "lucide-react";
 import AddHoldingModal from "./components/AddHoldingModal";
 import NewListModal from "./components/NewListModal";
@@ -37,12 +36,6 @@ interface GlobalData {
 }
 interface Trending {
   coins: { item: { id: string; name: string; symbol: string; thumb: string } }[];
-}
-interface NewsItem {
-  title: string;
-  url: string;
-  description: string;
-  publishedAt: string;
 }
 interface Holding {
   coinId: string;
@@ -74,14 +67,6 @@ export default function Home() {
   const [allCoinsSearch, setAllCoinsSearch] = useState<Coin[]>([]);
   const [global, setGlobal] = useState<GlobalData | null>(null);
   const [trending, setTrending] = useState<Trending | null>(null);
-  const [news] = useState<NewsItem[]>([
-    {
-      title: "Placeholder News 1",
-      url: "#",
-      description: "Crypto market surges.",
-      publishedAt: "2025-11-10",
-    },
-  ]);
   const [globalWatchlist, setGlobalWatchlist] = useState<string[]>([]);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(
@@ -95,10 +80,19 @@ export default function Home() {
   const [showAddHoldingModal, setShowAddHoldingModal] = useState(false);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+  // Optimize: Create a map for quick coin lookup
+  const coinsMap = useMemo(() => {
+    const map = new Map<string, Coin>();
+    coins.forEach((coin) => map.set(coin.id, coin));
+    return map;
+  }, [coins]);
+
   // ====================== LOCALSTORAGE HELPERS ======================
-  const getUserKey = (name: string) =>
-    `cryptoUser_${name.toLowerCase().trim()}`;
-  const saveUserData = (name: string) => {
+  const getUserKey = useCallback((name: string) =>
+    `cryptoUser_${name.toLowerCase().trim()}`, []);
+
+  const saveUserData = useCallback((name: string) => {
     const key = getUserKey(name);
     const data: UserData = {
       profile: userProfile!,
@@ -106,8 +100,9 @@ export default function Home() {
       watchlist: globalWatchlist,
     };
     localStorage.setItem(key, JSON.stringify(data));
-  };
-  const loadUserData = (name: string) => {
+  }, [userProfile, portfolios, globalWatchlist]);
+
+  const loadUserData = useCallback((name: string) => {
     const key = getUserKey(name);
     const saved = localStorage.getItem(key);
     if (saved) {
@@ -119,7 +114,8 @@ export default function Home() {
         setSelectedPortfolioId(data.portfolios[0].id);
       }
     }
-  };
+  }, []);
+
   // ====================== FETCH DATA ======================
   useEffect(() => {
     const fetchData = async () => {
@@ -159,14 +155,16 @@ export default function Home() {
       }
     };
     fetchData();
-  }, []);
+  }, [loadUserData]);
+
   // ====================== SAVE ON CHANGE ======================
   useEffect(() => {
     if (!loading && userProfile) {
       saveUserData(userProfile.name);
       localStorage.setItem("cryptoLastUser", userProfile.name);
     }
-  }, [globalWatchlist, portfolios, userProfile, loading]);
+  }, [globalWatchlist, portfolios, userProfile, loading, saveUserData]);
+
   // ====================== HELPERS ======================
   const toggleGlobalWatchlist = useCallback((coinId: string) => {
     setGlobalWatchlist((prev) =>
@@ -175,19 +173,23 @@ export default function Home() {
         : [...prev, coinId]
     );
   }, []);
-  const formatNumber = (num: number) =>
-    new Intl.NumberFormat("en-US", { notation: "compact" }).format(num);
-  const getChangeColor = (change: number) =>
+
+  const formatNumber = useCallback((num: number) =>
+    new Intl.NumberFormat("en-US", { notation: "compact" }).format(num), []);
+
+  const getChangeColor = useCallback((change: number) =>
     change > 0
       ? "text-green-400"
       : change < 0
       ? "text-red-400"
-      : "text-gray-400";
+      : "text-gray-400", []);
+
   // ====================== PORTFOLIO CALC ======================
   const currentPortfolio = useMemo(
     () => portfolios.find((p) => p.id === selectedPortfolioId) || null,
     [portfolios, selectedPortfolioId]
   );
+
   const { portfolioValue, portfolioCost, portfolioPnL, portfolioPnLPercent } =
     useMemo(() => {
       if (!currentPortfolio)
@@ -200,7 +202,7 @@ export default function Home() {
       let value = 0,
         cost = 0;
       currentPortfolio.holdings.forEach((h) => {
-        const coin = coins.find((c) => c.id === h.coinId);
+        const coin = coinsMap.get(h.coinId);
         const price = coin?.current_price || 0;
         value += price * h.amount;
         cost += h.buyPrice * h.amount;
@@ -213,7 +215,8 @@ export default function Home() {
         portfolioPnL: pnl,
         portfolioPnLPercent: pct,
       };
-    }, [currentPortfolio, coins]);
+    }, [currentPortfolio, coinsMap]);
+
   // ====================== HANDLERS ======================
   const createPortfolio = useCallback((name: string) => {
     if (!name.trim()) return;
@@ -225,6 +228,7 @@ export default function Home() {
     setPortfolios((prev) => [...prev, newPort]);
     setShowNewListModal(false);
   }, []);
+
   // Auto-select portfolio terakhir (baru dibuat)
   useEffect(() => {
     if (portfolios.length > 0) {
@@ -236,7 +240,8 @@ export default function Home() {
         setSelectedPortfolioId(lastPortfolio.id);
       }
     }
-  }, [portfolios]);
+  }, [portfolios, selectedPortfolioId]);
+
   const deletePortfolio = useCallback(
     (id: string) => {
       setPortfolios((prev) => {
@@ -249,6 +254,7 @@ export default function Home() {
     },
     [selectedPortfolioId]
   );
+
   const handleSaveHolding = useCallback(
     (holding: Holding) => {
       if (!currentPortfolio) return;
@@ -259,7 +265,7 @@ export default function Home() {
               ? {
                   ...p,
                   holdings: p.holdings.map((h) =>
-                    h === editingHolding ? { ...h, ...holding } : h
+                    h.coinId === holding.coinId ? { ...h, ...holding } : h
                   ),
                 }
               : p
@@ -279,6 +285,7 @@ export default function Home() {
     },
     [currentPortfolio, editingHolding]
   );
+
   const removeHolding = useCallback(
     (coinId: string) => {
       if (!currentPortfolio) return;
@@ -292,15 +299,18 @@ export default function Home() {
     },
     [currentPortfolio]
   );
+
   const openEditHolding = useCallback((holding: Holding) => {
     setEditingHolding(holding);
     setShowAddHoldingModal(true);
   }, []);
-  const closeAddModal = () => {
+
+  const closeAddModal = useCallback(() => {
     setShowAddHoldingModal(false);
     setEditingHolding(null);
-  };
-  const saveProfile = (e: React.FormEvent<HTMLFormElement>) => {
+  }, []);
+
+  const saveProfile = useCallback((e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const newName = (
@@ -343,61 +353,66 @@ export default function Home() {
     } else {
       handleSave(userProfile?.avatar || "");
     }
-  };
-  const signOut = () => {
+  }, [userProfile, getUserKey, loadUserData]);
+
+  const signOut = useCallback(() => {
     setUserProfile(null);
     setPortfolios([]);
     setGlobalWatchlist([]);
     setSelectedPortfolioId(null);
     localStorage.removeItem("cryptoLastUser");
-  };
+  }, []);
+
   // ====================== MEMOIZED ROW ======================
- const CoinRow = React.memo(({ coin }: { coin: Coin }) => (
-   <tr className="border-b border-gray-700 hover:bg-gray-800">
-     <td className="p-2 flex items-center">
-       <img src={coin.image} alt="" className="w-6 h-6 mr-2" />
-       {coin.name} ({coin.symbol.toUpperCase()})
-     </td>
-     <td className="p-2 text-right">${coin.current_price.toFixed(2)}</td>
-     <td
-       className={`p-2 text-right ${getChangeColor(
-         coin.price_change_percentage_24h_in_currency ?? 0
-       )}`}
-     >
-       {coin.price_change_percentage_24h_in_currency != null
-         ? `${coin.price_change_percentage_24h_in_currency.toFixed(2)}%`
-         : "-.--%"}
-     </td>
-     <td className="p-2 text-right">${formatNumber(coin.market_cap)}</td>
-     <td className="p-2">
-       <ResponsiveContainer width={100} height={40}>
-         <LineChart
-           data={coin.sparkline_in_7d.price
-             .slice(-50)
-             .map((p) => ({ price: p }))}
-         >
-           <Line
-             type="monotone"
-             dataKey="price"
-             stroke="#8884d8"
-             dot={false}
-             strokeWidth={1}
-           />
-         </LineChart>
-       </ResponsiveContainer>
-     </td>
-     <td className="p-2 text-center">
-       <button
-         onClick={() => toggleGlobalWatchlist(coin.id)}
-         className="text-yellow-400 text-xl"
-       >
-         {globalWatchlist.includes(coin.id) ? "★" : "☆"}
-       </button>
-     </td>
-   </tr>
- ));
-  const HoldingRow = React.memo(({ h }: { h: Holding }) => {
-    const coin = coins.find((c) => c.id === h.coinId);
+  const CoinRow = React.memo(function CoinRow({ coin }: { coin: Coin }) {
+    return (
+      <tr className="border-b border-gray-700 hover:bg-gray-800">
+        <td className="p-2 flex items-center">
+          <Image src={coin.image} alt={coin.name} width={24} height={24} className="mr-2" />
+          {coin.name} ({coin.symbol.toUpperCase()})
+        </td>
+        <td className="p-2 text-right">${coin.current_price.toFixed(2)}</td>
+        <td
+          className={`p-2 text-right ${getChangeColor(
+            coin.price_change_percentage_24h_in_currency ?? 0
+          )}`}
+        >
+          {coin.price_change_percentage_24h_in_currency != null
+            ? `${coin.price_change_percentage_24h_in_currency.toFixed(2)}%`
+            : "-.--%"}
+        </td>
+        <td className="p-2 text-right">${formatNumber(coin.market_cap)}</td>
+        <td className="p-2">
+          <ResponsiveContainer width={100} height={40}>
+            <LineChart
+              data={coin.sparkline_in_7d.price
+                .slice(-50)
+                .map((p) => ({ price: p }))}
+            >
+              <Line
+                type="monotone"
+                dataKey="price"
+                stroke="#8884d8"
+                dot={false}
+                strokeWidth={1}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </td>
+        <td className="p-2 text-center">
+          <button
+            onClick={() => toggleGlobalWatchlist(coin.id)}
+            className="text-yellow-400 text-xl"
+          >
+            {globalWatchlist.includes(coin.id) ? "★" : "☆"}
+          </button>
+        </td>
+      </tr>
+    );
+  });
+
+  const HoldingRow = React.memo(function HoldingRow({ h }: { h: Holding }) {
+    const coin = coinsMap.get(h.coinId);
     const cur = coin?.current_price || 0;
     const value = cur * h.amount;
     const cost = h.buyPrice * h.amount;
@@ -406,7 +421,7 @@ export default function Home() {
     return (
       <tr className="border-b border-gray-700 hover:bg-gray-800">
         <td className="p-2 flex items-center">
-          {h.image && <img src={h.image} alt="" className="w-6 h-6 mr-2" />}
+          {h.image && <Image src={h.image} alt={h.name || ""} width={24} height={24} className="mr-2" />}
           {h.name} ({h.symbol?.toUpperCase()})
         </td>
         <td className="p-2 text-right">{h.amount}</td>
@@ -434,6 +449,7 @@ export default function Home() {
       </tr>
     );
   });
+
   if (loading)
     return (
       <div className="flex justify-center items-center h-screen text-2xl">
@@ -450,10 +466,12 @@ export default function Home() {
           {userProfile ? (
             <div className="flex items-center gap-3">
               {userProfile.avatar && (
-                <img
+                <Image
                   src={userProfile.avatar}
                   alt="avatar"
-                  className="w-10 h-10 rounded-full object-cover"
+                  width={40}
+                  height={40}
+                  className="rounded-full object-cover"
                 />
               )}
               <div>
@@ -600,8 +618,8 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {currentPortfolio.holdings.map((h, i) => (
-                    <HoldingRow key={i} h={h} />
+                  {currentPortfolio.holdings.map((h) => (
+                    <HoldingRow key={h.coinId} h={h} />
                   ))}
                 </tbody>
               </table>
@@ -609,7 +627,7 @@ export default function Home() {
           ) : (
             currentPortfolio && (
               <p className="text-gray-400 mt-4">
-                No holdings yet. Click "Add Investment" to start.
+                No holdings yet. Click &quot;Add Investment&quot; to start.
               </p>
             )
           )}
@@ -643,7 +661,7 @@ export default function Home() {
                       className="border-b border-gray-700 hover:bg-gray-800"
                     >
                       <td className="p-2 flex items-center">
-                        <img src={coin.image} alt="" className="w-6 h-6 mr-2" />
+                        <Image src={coin.image} alt={coin.name} width={24} height={24} className="mr-2" />
                         {coin.name} ({coin.symbol.toUpperCase()})
                       </td>
                       <td className="p-2 text-right">
@@ -688,7 +706,7 @@ export default function Home() {
                 className="bg-gray-800 p-4 rounded-lg flex items-center justify-between"
               >
                 <div className="flex items-center">
-                  <img src={item.thumb} alt="" className="w-8 h-8 mr-2" />
+                  <Image src={item.thumb} alt={item.name} width={32} height={32} className="mr-2" />
                   <div>
                     <p className="font-medium">{item.name}</p>
                     <p className="text-sm text-gray-400">
@@ -776,10 +794,12 @@ export default function Home() {
                 />
                 {(avatarPreview || userProfile?.avatar) && (
                   <div className="flex justify-center">
-                    <img
-                      src={avatarPreview || userProfile?.avatar}
+                    <Image
+                      src={avatarPreview || userProfile?.avatar || ""}
                       alt="Preview"
-                      className="w-24 h-24 rounded-full object-cover border-4 border-gray-700"
+                      width={96}
+                      height={96}
+                      className="rounded-full object-cover border-4 border-gray-700"
                     />
                   </div>
                 )}
