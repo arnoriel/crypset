@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Crypto Finance Dashboard",
+  title: "Crypset",
   description: "A modern crypto market dashboard inspired by Google Finance but better.",
 };
 
