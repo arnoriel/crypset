@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import AddHoldingModal from "./components/AddHoldingModal";
 import NewListModal from "./components/NewListModal";
-
 // ====================== TYPES ======================
 interface Coin {
   id: string;
@@ -68,9 +67,7 @@ interface UserData {
   portfolios: Portfolio[];
   watchlist: string[];
 }
-
 const COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3";
-
 export default function Home() {
   // ====================== STATE ======================
   const [coins, setCoins] = useState<Coin[]>([]);
@@ -92,14 +89,12 @@ export default function Home() {
   );
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-
   // Modal states
-  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNewListModal, setShowNewListModal] = useState(false);
   const [showAddHoldingModal, setShowAddHoldingModal] = useState(false);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-
   // ====================== LOCALSTORAGE HELPERS ======================
   const getUserKey = (name: string) =>
     `cryptoUser_${name.toLowerCase().trim()}`;
@@ -112,7 +107,6 @@ export default function Home() {
     };
     localStorage.setItem(key, JSON.stringify(data));
   };
-
   const loadUserData = (name: string) => {
     const key = getUserKey(name);
     const saved = localStorage.getItem(key);
@@ -126,7 +120,6 @@ export default function Home() {
       }
     }
   };
-
   // ====================== FETCH DATA ======================
   useEffect(() => {
     const fetchData = async () => {
@@ -143,7 +136,6 @@ export default function Home() {
             fetch(`${COINGECKO_BASE_URL}/search/trending`),
           ]
         );
-
         const [coinsData, searchData, globalData, trendingData] =
           await Promise.all([
             coinsRes.json(),
@@ -151,18 +143,15 @@ export default function Home() {
             globalRes.json(),
             trendingRes.json(),
           ]);
-
         setCoins(coinsData);
         setAllCoinsSearch(searchData);
         setGlobal(globalData);
         setTrending(trendingData);
-
         // Cek apakah ada user yang sudah login sebelumnya
         const lastUser = localStorage.getItem("cryptoLastUser");
         if (lastUser) {
           loadUserData(lastUser);
         }
-
         setLoading(false);
       } catch (e) {
         console.error(e);
@@ -171,7 +160,6 @@ export default function Home() {
     };
     fetchData();
   }, []);
-
   // ====================== SAVE ON CHANGE ======================
   useEffect(() => {
     if (!loading && userProfile) {
@@ -179,7 +167,6 @@ export default function Home() {
       localStorage.setItem("cryptoLastUser", userProfile.name);
     }
   }, [globalWatchlist, portfolios, userProfile, loading]);
-
   // ====================== HELPERS ======================
   const toggleGlobalWatchlist = useCallback((coinId: string) => {
     setGlobalWatchlist((prev) =>
@@ -188,23 +175,19 @@ export default function Home() {
         : [...prev, coinId]
     );
   }, []);
-
   const formatNumber = (num: number) =>
     new Intl.NumberFormat("en-US", { notation: "compact" }).format(num);
-
   const getChangeColor = (change: number) =>
     change > 0
       ? "text-green-400"
       : change < 0
       ? "text-red-400"
       : "text-gray-400";
-
   // ====================== PORTFOLIO CALC ======================
   const currentPortfolio = useMemo(
     () => portfolios.find((p) => p.id === selectedPortfolioId) || null,
     [portfolios, selectedPortfolioId]
   );
-
   const { portfolioValue, portfolioCost, portfolioPnL, portfolioPnLPercent } =
     useMemo(() => {
       if (!currentPortfolio)
@@ -231,7 +214,6 @@ export default function Home() {
         portfolioPnLPercent: pct,
       };
     }, [currentPortfolio, coins]);
-
   // ====================== HANDLERS ======================
   const createPortfolio = useCallback((name: string) => {
     if (!name.trim()) return;
@@ -243,7 +225,6 @@ export default function Home() {
     setPortfolios((prev) => [...prev, newPort]);
     setShowNewListModal(false);
   }, []);
-
   // Auto-select portfolio terakhir (baru dibuat)
   useEffect(() => {
     if (portfolios.length > 0) {
@@ -256,7 +237,6 @@ export default function Home() {
       }
     }
   }, [portfolios]);
-
   const deletePortfolio = useCallback(
     (id: string) => {
       setPortfolios((prev) => {
@@ -269,11 +249,9 @@ export default function Home() {
     },
     [selectedPortfolioId]
   );
-
   const handleSaveHolding = useCallback(
     (holding: Holding) => {
       if (!currentPortfolio) return;
-
       if (editingHolding) {
         setPortfolios((prev) =>
           prev.map((p) =>
@@ -301,7 +279,6 @@ export default function Home() {
     },
     [currentPortfolio, editingHolding]
   );
-
   const removeHolding = useCallback(
     (coinId: string) => {
       if (!currentPortfolio) return;
@@ -315,47 +292,58 @@ export default function Home() {
     },
     [currentPortfolio]
   );
-
   const openEditHolding = useCallback((holding: Holding) => {
     setEditingHolding(holding);
     setShowAddHoldingModal(true);
   }, []);
-
   const closeAddModal = () => {
     setShowAddHoldingModal(false);
     setEditingHolding(null);
   };
-
   const saveProfile = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
-    const name = (
+    const newName = (
       form.elements.namedItem("name") as HTMLInputElement
     ).value.trim();
     const bio = (form.elements.namedItem("bio") as HTMLTextAreaElement).value;
     const file = (form.elements.namedItem("avatar") as HTMLInputElement)
       .files?.[0];
+    if (!newName) return;
 
-    if (!name) return;
+    const oldName = userProfile?.name;
+    const handleSave = (avatar: string) => {
+      const newProfile = { name: newName, bio, avatar };
+      setUserProfile(newProfile);
+      setAvatarPreview(null);
+      setShowProfileModal(false);
+
+      // Jika nama berubah, pindahkan data
+      if (oldName && oldName !== newName) {
+        const oldKey = getUserKey(oldName);
+        const oldData = localStorage.getItem(oldKey);
+        if (oldData) {
+          const data: UserData = JSON.parse(oldData);
+          data.profile = newProfile;
+          const newKey = getUserKey(newName);
+          localStorage.setItem(newKey, JSON.stringify(data));
+          localStorage.removeItem(oldKey);
+        }
+      }
+      localStorage.setItem("cryptoLastUser", newName);
+      loadUserData(newName); // Reload data
+    };
 
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const newProfile = { name, bio, avatar: reader.result as string };
-        setUserProfile(newProfile);
-        setAvatarPreview(null);
-        setShowSignInModal(false);
-        loadUserData(name); // Load data lama kalau ada
+        handleSave(reader.result as string);
       };
       reader.readAsDataURL(file);
     } else {
-      const newProfile = { name, bio, avatar: userProfile?.avatar || "" };
-      setUserProfile(newProfile);
-      setShowSignInModal(false);
-      loadUserData(name);
+      handleSave(userProfile?.avatar || "");
     }
   };
-
   const signOut = () => {
     setUserProfile(null);
     setPortfolios([]);
@@ -363,51 +351,51 @@ export default function Home() {
     setSelectedPortfolioId(null);
     localStorage.removeItem("cryptoLastUser");
   };
-
   // ====================== MEMOIZED ROW ======================
-  const CoinRow = React.memo(({ coin }: { coin: Coin }) => (
-    <tr className="border-b border-gray-700 hover:bg-gray-800">
-      <td className="p-2 flex items-center">
-        <img src={coin.image} alt="" className="w-6 h-6 mr-2" />
-        {coin.name} ({coin.symbol.toUpperCase()})
-      </td>
-      <td className="p-2 text-right">${coin.current_price.toFixed(2)}</td>
-      <td
-        className={`p-2 text-right ${getChangeColor(
-          coin.price_change_percentage_24h_in_currency
-        )}`}
-      >
-        {coin.price_change_percentage_24h_in_currency.toFixed(2)}%
-      </td>
-      <td className="p-2 text-right">${formatNumber(coin.market_cap)}</td>
-      <td className="p-2">
-        <ResponsiveContainer width={100} height={40}>
-          <LineChart
-            data={coin.sparkline_in_7d.price
-              .slice(-50)
-              .map((p) => ({ price: p }))}
-          >
-            <Line
-              type="monotone"
-              dataKey="price"
-              stroke="#8884d8"
-              dot={false}
-              strokeWidth={1}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </td>
-      <td className="p-2 text-center">
-        <button
-          onClick={() => toggleGlobalWatchlist(coin.id)}
-          className="text-yellow-400 text-xl"
-        >
-          {globalWatchlist.includes(coin.id) ? "★" : "☆"}
-        </button>
-      </td>
-    </tr>
-  ));
-
+ const CoinRow = React.memo(({ coin }: { coin: Coin }) => (
+   <tr className="border-b border-gray-700 hover:bg-gray-800">
+     <td className="p-2 flex items-center">
+       <img src={coin.image} alt="" className="w-6 h-6 mr-2" />
+       {coin.name} ({coin.symbol.toUpperCase()})
+     </td>
+     <td className="p-2 text-right">${coin.current_price.toFixed(2)}</td>
+     <td
+       className={`p-2 text-right ${getChangeColor(
+         coin.price_change_percentage_24h_in_currency ?? 0
+       )}`}
+     >
+       {coin.price_change_percentage_24h_in_currency != null
+         ? `${coin.price_change_percentage_24h_in_currency.toFixed(2)}%`
+         : "-.--%"}
+     </td>
+     <td className="p-2 text-right">${formatNumber(coin.market_cap)}</td>
+     <td className="p-2">
+       <ResponsiveContainer width={100} height={40}>
+         <LineChart
+           data={coin.sparkline_in_7d.price
+             .slice(-50)
+             .map((p) => ({ price: p }))}
+         >
+           <Line
+             type="monotone"
+             dataKey="price"
+             stroke="#8884d8"
+             dot={false}
+             strokeWidth={1}
+           />
+         </LineChart>
+       </ResponsiveContainer>
+     </td>
+     <td className="p-2 text-center">
+       <button
+         onClick={() => toggleGlobalWatchlist(coin.id)}
+         className="text-yellow-400 text-xl"
+       >
+         {globalWatchlist.includes(coin.id) ? "★" : "☆"}
+       </button>
+     </td>
+   </tr>
+ ));
   const HoldingRow = React.memo(({ h }: { h: Holding }) => {
     const coin = coins.find((c) => c.id === h.coinId);
     const cur = coin?.current_price || 0;
@@ -415,7 +403,6 @@ export default function Home() {
     const cost = h.buyPrice * h.amount;
     const pnl = value - cost;
     const pnlPct = cost ? (pnl / cost) * 100 : 0;
-
     return (
       <tr className="border-b border-gray-700 hover:bg-gray-800">
         <td className="p-2 flex items-center">
@@ -447,14 +434,12 @@ export default function Home() {
       </tr>
     );
   });
-
   if (loading)
     return (
       <div className="flex justify-center items-center h-screen text-2xl">
         Loading...
       </div>
     );
-
   // ====================== RENDER ======================
   return (
     <div className="container mx-auto p-4 max-w-7xl">
@@ -478,6 +463,12 @@ export default function Home() {
                 </p>
               </div>
               <button
+                onClick={() => setShowProfileModal(true)}
+                className="text-blue-400 hover:text-blue-300"
+              >
+                <Edit2 size={20} />
+              </button>
+              <button
                 onClick={signOut}
                 className="text-red-400 hover:text-red-300"
               >
@@ -486,7 +477,7 @@ export default function Home() {
             </div>
           ) : (
             <button
-              onClick={() => setShowSignInModal(true)}
+              onClick={() => setShowProfileModal(true)}
               className="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
             >
               <User size={18} /> Sign In
@@ -494,7 +485,6 @@ export default function Home() {
           )}
         </div>
       </header>
-
       {/* Global Stats */}
       {global && (
         <section className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -508,7 +498,7 @@ export default function Home() {
                 global.data.market_cap_change_percentage_24h_usd
               )}
             >
-              {global.data.market_cap_change_percentage_24h_usd.toFixed(2)}%
+              {global.data.market_cap_change_percentage_24h_usd?.toFixed(2) ?? "0.00"}%
             </p>
           </div>
           <div className="bg-gray-800 p-4 rounded-lg">
@@ -534,7 +524,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
       {/* Portfolio Tabs & Summary */}
       {portfolios.length > 0 && (
         <section className="mb-8">
@@ -562,7 +551,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-
           {currentPortfolio && (
             <div className="bg-gray-800 p-4 rounded-lg mt-4 flex flex-wrap gap-6">
               <div>
@@ -596,7 +584,6 @@ export default function Home() {
               </button>
             </div>
           )}
-
           {/* Holdings Table */}
           {currentPortfolio && currentPortfolio.holdings.length > 0 ? (
             <div className="mt-6 overflow-x-auto">
@@ -628,7 +615,6 @@ export default function Home() {
           )}
         </section>
       )}
-
       {/* Global Watchlist */}
       <section className="mb-8">
         <h2 className="text-2xl font-bold mb-4">Global Watchlist</h2>
@@ -691,7 +677,6 @@ export default function Home() {
           </div>
         )}
       </section>
-
       {/* Trending */}
       {trending && (
         <section className="mb-8">
@@ -722,7 +707,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
       {/* Full Table */}
       <section className="mb-8">
         <h2 className="text-2xl font-bold mb-4">All Cryptocurrencies</h2>
@@ -746,34 +730,12 @@ export default function Home() {
           </table>
         </div>
       </section>
-
-      {/* News */}
-      <section>
-        <h2 className="text-2xl font-bold mb-4">Today's Crypto News</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {news.map((n, i) => (
-            <a
-              key={i}
-              href={n.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-gray-800 p-4 rounded hover:bg-gray-700"
-            >
-              <h3 className="font-semibold">{n.title}</h3>
-              <p className="text-sm text-gray-400">{n.publishedAt}</p>
-              <p className="text-gray-300">{n.description}</p>
-            </a>
-          ))}
-        </div>
-      </section>
-
       {/* ==================== MODALS ==================== */}
-
-      {/* Sign In Modal with Preview */}
-      {showSignInModal && (
+      {/* Profile Modal (Create/Edit) with Preview */}
+      {showProfileModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-2xl mb-4">Create Profile</h2>
+            <h2 className="text-2xl mb-4">{userProfile ? "Edit Profile" : "Create Profile"}</h2>
             <form onSubmit={saveProfile}>
               <div className="mb-4">
                 <label className="block mb-1">Name</label>
@@ -832,7 +794,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowSignInModal(false);
+                    setShowProfileModal(false);
                     setAvatarPreview(null);
                   }}
                   className="bg-gray-600 px-4 py-2 rounded hover:bg-gray-700"
@@ -844,14 +806,12 @@ export default function Home() {
           </div>
         </div>
       )}
-
       {/* New List Modal */}
       <NewListModal
         isOpen={showNewListModal}
         onClose={() => setShowNewListModal(false)}
         onCreate={createPortfolio}
       />
-
       {/* Add / Edit Holding Modal */}
       <AddHoldingModal
         isOpen={showAddHoldingModal}
