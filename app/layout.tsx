@@ -6,7 +6,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Crypset",
-  description: "A modern crypto market dashboard inspired by Google Finance but better.",
+  description:
+    "A modern crypto market dashboard inspired by Google Finance but better.",
 };
 
 export default function RootLayout({
@@ -16,6 +17,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link rel="preconnect" href="https://api.coingecko.com" />
+        <link rel="preconnect" href="https://assets.coingecko.com" />
+        <link rel="dns-prefetch" href="https://assets.coingecko.com" />
+      </head>
       <body className={`${inter.className} bg-gray-900 text-white antialiased`}>
         {children}
       </body>

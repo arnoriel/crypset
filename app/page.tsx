@@ -1,6 +1,5 @@
 "use client";
-import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { LineChart, Line, ResponsiveContainer } from "recharts";
+import React, { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import Image from "next/image";
 import {
   Plus,
@@ -12,6 +11,25 @@ import {
 } from "lucide-react";
 import AddHoldingModal from "./components/AddHoldingModal";
 import NewListModal from "./components/NewListModal";
+import dynamic from "next/dynamic";
+
+const WatchlistSection = dynamic(() => import("./components/WatchlistSection"), {
+  loading: () => (
+    <div className="h-64 bg-gray-800 rounded-lg animate-pulse" />
+  ),
+  ssr: false,
+});
+const TrendingSection = dynamic(() => import("./components/TrendingSection"), {
+  loading: () => <div className="h-64 bg-gray-800 rounded-lg animate-pulse" />,
+  ssr: false,
+});
+const FullTableSection = dynamic(() => import("./components/FullTableSection"), {
+  loading: () => (
+    <div className="h-screen bg-gray-800 rounded-lg animate-pulse" />
+  ),
+  ssr: false,
+});
+
 // ====================== TYPES ======================
 interface Coin {
   id: string;
@@ -61,6 +79,7 @@ interface UserData {
   watchlist: string[];
 }
 const COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3";
+
 export default function Home() {
   // ====================== STATE ======================
   const [coins, setCoins] = useState<Coin[]>([]);
@@ -69,9 +88,7 @@ export default function Home() {
   const [trending, setTrending] = useState<Trending | null>(null);
   const [globalWatchlist, setGlobalWatchlist] = useState<string[]>([]);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(
-    null
-  );
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   // Modal states
@@ -100,7 +117,7 @@ export default function Home() {
       watchlist: globalWatchlist,
     };
     localStorage.setItem(key, JSON.stringify(data));
-  }, [userProfile, portfolios, globalWatchlist]);
+  }, [userProfile, portfolios, globalWatchlist, getUserKey]);
 
   const loadUserData = useCallback((name: string) => {
     const key = getUserKey(name);
@@ -114,36 +131,28 @@ export default function Home() {
         setSelectedPortfolioId(data.portfolios[0].id);
       }
     }
-  }, []);
+  }, [getUserKey]);
 
   // ====================== FETCH DATA ======================
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [coinsRes, searchRes, globalRes, trendingRes] = await Promise.all(
-          [
-            fetch(
-              `${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=1h,24h,7d`
-            ),
-            fetch(
-              `${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1`
-            ),
-            fetch(`${COINGECKO_BASE_URL}/global`),
-            fetch(`${COINGECKO_BASE_URL}/search/trending`),
-          ]
-        );
-        const [coinsData, searchData, globalData, trendingData] =
-          await Promise.all([
-            coinsRes.json(),
-            searchRes.json(),
-            globalRes.json(),
-            trendingRes.json(),
-          ]);
+        const [coinsRes, searchRes, globalRes, trendingRes] = await Promise.all([
+          fetch(`${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=1h,24h,7d`),
+          fetch(`${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1`),
+          fetch(`${COINGECKO_BASE_URL}/global`),
+          fetch(`${COINGECKO_BASE_URL}/search/trending`),
+        ]);
+        const [coinsData, searchData, globalData, trendingData] = await Promise.all([
+          coinsRes.json(),
+          searchRes.json(),
+          globalRes.json(),
+          trendingRes.json(),
+        ]);
         setCoins(coinsData);
         setAllCoinsSearch(searchData);
         setGlobal(globalData);
         setTrending(trendingData);
-        // Cek apakah ada user yang sudah login sebelumnya
         const lastUser = localStorage.getItem("cryptoLastUser");
         if (lastUser) {
           loadUserData(lastUser);
@@ -229,7 +238,6 @@ export default function Home() {
     setShowNewListModal(false);
   }, []);
 
-  // Auto-select portfolio terakhir (baru dibuat)
   useEffect(() => {
     if (portfolios.length > 0) {
       const lastPortfolio = portfolios[portfolios.length - 1];
@@ -313,12 +321,9 @@ export default function Home() {
   const saveProfile = useCallback((e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
-    const newName = (
-      form.elements.namedItem("name") as HTMLInputElement
-    ).value.trim();
+    const newName = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
     const bio = (form.elements.namedItem("bio") as HTMLTextAreaElement).value;
-    const file = (form.elements.namedItem("avatar") as HTMLInputElement)
-      .files?.[0];
+    const file = (form.elements.namedItem("avatar") as HTMLInputElement).files?.[0];
     if (!newName) return;
 
     const oldName = userProfile?.name;
@@ -328,7 +333,6 @@ export default function Home() {
       setAvatarPreview(null);
       setShowProfileModal(false);
 
-      // Jika nama berubah, pindahkan data
       if (oldName && oldName !== newName) {
         const oldKey = getUserKey(oldName);
         const oldData = localStorage.getItem(oldKey);
@@ -341,7 +345,7 @@ export default function Home() {
         }
       }
       localStorage.setItem("cryptoLastUser", newName);
-      loadUserData(newName); // Reload data
+      loadUserData(newName);
     };
 
     if (file) {
@@ -363,99 +367,13 @@ export default function Home() {
     localStorage.removeItem("cryptoLastUser");
   }, []);
 
-  // ====================== MEMOIZED ROW ======================
-  const CoinRow = React.memo(function CoinRow({ coin }: { coin: Coin }) {
-    return (
-      <tr className="border-b border-gray-700 hover:bg-gray-800">
-        <td className="p-2 flex items-center">
-          <Image src={coin.image} alt={coin.name} width={24} height={24} className="mr-2" />
-          {coin.name} ({coin.symbol.toUpperCase()})
-        </td>
-        <td className="p-2 text-right">${coin.current_price.toFixed(2)}</td>
-        <td
-          className={`p-2 text-right ${getChangeColor(
-            coin.price_change_percentage_24h_in_currency ?? 0
-          )}`}
-        >
-          {coin.price_change_percentage_24h_in_currency != null
-            ? `${coin.price_change_percentage_24h_in_currency.toFixed(2)}%`
-            : "-.--%"}
-        </td>
-        <td className="p-2 text-right">${formatNumber(coin.market_cap)}</td>
-        <td className="p-2">
-          <ResponsiveContainer width={100} height={40}>
-            <LineChart
-              data={coin.sparkline_in_7d.price
-                .slice(-50)
-                .map((p) => ({ price: p }))}
-            >
-              <Line
-                type="monotone"
-                dataKey="price"
-                stroke="#8884d8"
-                dot={false}
-                strokeWidth={1}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </td>
-        <td className="p-2 text-center">
-          <button
-            onClick={() => toggleGlobalWatchlist(coin.id)}
-            className="text-yellow-400 text-xl"
-          >
-            {globalWatchlist.includes(coin.id) ? "★" : "☆"}
-          </button>
-        </td>
-      </tr>
-    );
-  });
-
-  const HoldingRow = React.memo(function HoldingRow({ h }: { h: Holding }) {
-    const coin = coinsMap.get(h.coinId);
-    const cur = coin?.current_price || 0;
-    const value = cur * h.amount;
-    const cost = h.buyPrice * h.amount;
-    const pnl = value - cost;
-    const pnlPct = cost ? (pnl / cost) * 100 : 0;
-    return (
-      <tr className="border-b border-gray-700 hover:bg-gray-800">
-        <td className="p-2 flex items-center">
-          {h.image && <Image src={h.image} alt={h.name || ""} width={24} height={24} className="mr-2" />}
-          {h.name} ({h.symbol?.toUpperCase()})
-        </td>
-        <td className="p-2 text-right">{h.amount}</td>
-        <td className="p-2 text-right">${h.buyPrice.toFixed(2)}</td>
-        <td className="p-2 text-right">${cur.toFixed(2)}</td>
-        <td className="p-2 text-right">${value.toFixed(2)}</td>
-        <td
-          className={`p-2 text-right ${
-            pnl >= 0 ? "text-green-400" : "text-red-400"
-          }`}
-        >
-          ${pnl.toFixed(2)} ({pnlPct.toFixed(2)}%)
-        </td>
-        <td className="p-2 text-center flex gap-2 justify-center">
-          <button onClick={() => openEditHolding(h)} className="text-blue-400">
-            <Edit2 size={16} />
-          </button>
-          <button
-            onClick={() => removeHolding(h.coinId)}
-            className="text-red-400"
-          >
-            <Trash2 size={16} />
-          </button>
-        </td>
-      </tr>
-    );
-  });
-
   if (loading)
     return (
       <div className="flex justify-center items-center h-screen text-2xl">
         Loading...
       </div>
     );
+
   // ====================== RENDER ======================
   return (
     <div className="container mx-auto p-4 max-w-7xl">
@@ -466,13 +384,14 @@ export default function Home() {
           {userProfile ? (
             <div className="flex items-center gap-3">
               {userProfile.avatar && (
-                <Image
-                  src={userProfile.avatar}
-                  alt="avatar"
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover"
-                />
+                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-gray-600">
+                  <Image
+                    src={userProfile.avatar}
+                    alt="avatar"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
               )}
               <div>
                 <p className="font-medium">{userProfile.name}</p>
@@ -503,6 +422,7 @@ export default function Home() {
           )}
         </div>
       </header>
+
       {/* Global Stats */}
       {global && (
         <section className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -511,11 +431,7 @@ export default function Home() {
             <p className="text-2xl">
               ${formatNumber(global.data.total_market_cap.usd)}
             </p>
-            <p
-              className={getChangeColor(
-                global.data.market_cap_change_percentage_24h_usd
-              )}
-            >
+            <p className={getChangeColor(global.data.market_cap_change_percentage_24h_usd)}>
               {global.data.market_cap_change_percentage_24h_usd?.toFixed(2) ?? "0.00"}%
             </p>
           </div>
@@ -542,6 +458,7 @@ export default function Home() {
           </div>
         </section>
       )}
+
       {/* Portfolio Tabs & Summary */}
       {portfolios.length > 0 && (
         <section className="mb-8">
@@ -619,7 +536,7 @@ export default function Home() {
                 </thead>
                 <tbody>
                   {currentPortfolio.holdings.map((h) => (
-                    <HoldingRow key={h.coinId} h={h} />
+                    <HoldingRow key={h.coinId} h={h} coinsMap={coinsMap} openEditHolding={openEditHolding} removeHolding={removeHolding} />
                   ))}
                 </tbody>
               </table>
@@ -633,127 +550,43 @@ export default function Home() {
           )}
         </section>
       )}
-      {/* Global Watchlist */}
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">Global Watchlist</h2>
-        {globalWatchlist.length === 0 ? (
-          <p className="text-gray-400">
-            Click star on any coin to add to watchlist
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full table-auto">
-              <thead className="bg-gray-800">
-                <tr>
-                  <th className="p-2 text-left">Name</th>
-                  <th className="p-2 text-right">Price</th>
-                  <th className="p-2 text-right">24h %</th>
-                  <th className="p-2 text-right">Market Cap</th>
-                  <th className="p-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {coins
-                  .filter((c) => globalWatchlist.includes(c.id))
-                  .map((coin) => (
-                    <tr
-                      key={coin.id}
-                      className="border-b border-gray-700 hover:bg-gray-800"
-                    >
-                      <td className="p-2 flex items-center">
-                        <Image src={coin.image} alt={coin.name} width={24} height={24} className="mr-2" />
-                        {coin.name} ({coin.symbol.toUpperCase()})
-                      </td>
-                      <td className="p-2 text-right">
-                        ${coin.current_price.toFixed(2)}
-                      </td>
-                      <td
-                        className={`p-2 text-right ${getChangeColor(
-                          coin.price_change_percentage_24h_in_currency
-                        )}`}
-                      >
-                        {coin.price_change_percentage_24h_in_currency.toFixed(
-                          2
-                        )}
-                        %
-                      </td>
-                      <td className="p-2 text-right">
-                        ${formatNumber(coin.market_cap)}
-                      </td>
-                      <td className="p-2 text-center">
-                        <button
-                          onClick={() => toggleGlobalWatchlist(coin.id)}
-                          className="text-yellow-400"
-                        >
-                          ★
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-      {/* Trending */}
-      {trending && (
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Trending</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {trending.coins.slice(0, 8).map(({ item }) => (
-              <div
-                key={item.id}
-                className="bg-gray-800 p-4 rounded-lg flex items-center justify-between"
-              >
-                <div className="flex items-center">
-                  <Image src={item.thumb} alt={item.name} width={32} height={32} className="mr-2" />
-                  <div>
-                    <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-gray-400">
-                      {item.symbol.toUpperCase()}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => toggleGlobalWatchlist(item.id)}
-                  className="text-yellow-400"
-                >
-                  {globalWatchlist.includes(item.id) ? "★" : "☆"}
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-      {/* Full Table */}
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">All Cryptocurrencies</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full table-auto">
-            <thead className="bg-gray-800">
-              <tr>
-                <th className="p-2 text-left">Name</th>
-                <th className="p-2 text-right">Price</th>
-                <th className="p-2 text-right">24h %</th>
-                <th className="p-2 text-right">Market Cap</th>
-                <th className="p-2 text-center">Chart</th>
-                <th className="p-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {coins.map((coin) => (
-                <CoinRow key={coin.id} coin={coin} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+
+      {/* === LAZY LOADED SECTIONS === */}
+      <Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+        <WatchlistSection
+          coins={coins}
+          globalWatchlist={globalWatchlist}
+          toggleGlobalWatchlist={toggleGlobalWatchlist}
+          formatNumber={formatNumber}
+          getChangeColor={getChangeColor}
+        />
+      </Suspense>
+
+      <Suspense fallback={<div className="h-64 bg-gray-800 rounded-lg animate-pulse" />}>
+        <TrendingSection
+          trending={trending}
+          globalWatchlist={globalWatchlist}
+          toggleGlobalWatchlist={toggleGlobalWatchlist}
+        />
+      </Suspense>
+
+      <Suspense fallback={<div className="h-screen bg-gray-800 rounded-lg animate-pulse" />}>
+        <FullTableSection
+          coins={coins}
+          globalWatchlist={globalWatchlist}
+          toggleGlobalWatchlist={toggleGlobalWatchlist}
+          formatNumber={formatNumber}
+          getChangeColor={getChangeColor}
+        />
+      </Suspense>
+
       {/* ==================== MODALS ==================== */}
-      {/* Profile Modal (Create/Edit) with Preview */}
       {showProfileModal && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
           <div className="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-2xl mb-4">{userProfile ? "Edit Profile" : "Create Profile"}</h2>
+            <h2 className="text-2xl mb-4">
+              {userProfile ? "Edit Profile" : "Create Profile"}
+            </h2>
             <form onSubmit={saveProfile}>
               <div className="mb-4">
                 <label className="block mb-1">Name</label>
@@ -786,21 +619,21 @@ export default function Home() {
                     const file = e.target.files?.[0];
                     if (file) {
                       const reader = new FileReader();
-                      reader.onloadend = () =>
-                        setAvatarPreview(reader.result as string);
+                      reader.onloadend = () => setAvatarPreview(reader.result as string);
                       reader.readAsDataURL(file);
                     }
                   }}
                 />
                 {(avatarPreview || userProfile?.avatar) && (
-                  <div className="flex justify-center">
-                    <Image
-                      src={avatarPreview || userProfile?.avatar || ""}
-                      alt="Preview"
-                      width={96}
-                      height={96}
-                      className="rounded-full object-cover border-4 border-gray-700"
-                    />
+                  <div className="flex justify-center my-6">
+                    <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-gray-700 shadow-2xl">
+                      <Image
+                        src={avatarPreview || userProfile?.avatar || ""}
+                        alt="Preview"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -826,13 +659,13 @@ export default function Home() {
           </div>
         </div>
       )}
-      {/* New List Modal */}
+
       <NewListModal
         isOpen={showNewListModal}
         onClose={() => setShowNewListModal(false)}
         onCreate={createPortfolio}
       />
-      {/* Add / Edit Holding Modal */}
+
       <AddHoldingModal
         isOpen={showAddHoldingModal}
         onClose={closeAddModal}
@@ -843,3 +676,46 @@ export default function Home() {
     </div>
   );
 }
+
+// === HoldingRow dipindah ke sini biar page.tsx ga import Recharts ===
+const HoldingRow = React.memo(function HoldingRow({ 
+  h, 
+  coinsMap, 
+  openEditHolding, 
+  removeHolding 
+}: { 
+  h: Holding; 
+  coinsMap: Map<string, Coin>; 
+  openEditHolding: (h: Holding) => void; 
+  removeHolding: (coinId: string) => void; 
+}) {
+  const coin = coinsMap.get(h.coinId);
+  const cur = coin?.current_price || 0;
+  const value = cur * h.amount;
+  const cost = h.buyPrice * h.amount;
+  const pnl = value - cost;
+  const pnlPct = cost ? (pnl / cost) * 100 : 0;
+  return (
+    <tr className="border-b border-gray-700 hover:bg-gray-800">
+      <td className="p-2 flex items-center">
+        {h.image && <Image src={h.image} alt={h.name || ""} width={24} height={24} className="mr-2" loading="lazy" />}
+        {h.name} ({h.symbol?.toUpperCase()})
+      </td>
+      <td className="p-2 text-right">{h.amount}</td>
+      <td className="p-2 text-right">${h.buyPrice.toFixed(2)}</td>
+      <td className="p-2 text-right">${cur.toFixed(2)}</td>
+      <td className="p-2 text-right">${value.toFixed(2)}</td>
+      <td className={`p-2 text-right ${pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+        ${pnl.toFixed(2)} ({pnlPct.toFixed(2)}%)
+      </td>
+      <td className="p-2 text-center flex gap-2 justify-center">
+        <button onClick={() => openEditHolding(h)} className="text-blue-400">
+          <Edit2 size={16} />
+        </button>
+        <button onClick={() => removeHolding(h.coinId)} className="text-red-400">
+          <Trash2 size={16} />
+        </button>
+      </td>
+    </tr>
+  );
+});
