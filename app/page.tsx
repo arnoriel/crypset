@@ -88,7 +88,9 @@ export default function Home() {
   const [trending, setTrending] = useState<Trending | null>(null);
   const [globalWatchlist, setGlobalWatchlist] = useState<string[]>([]);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(
+    null
+  );
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   // Modal states
@@ -106,49 +108,64 @@ export default function Home() {
   }, [coins]);
 
   // ====================== LOCALSTORAGE HELPERS ======================
-  const getUserKey = useCallback((name: string) =>
-    `cryptoUser_${name.toLowerCase().trim()}`, []);
+  const getUserKey = useCallback(
+    (name: string) => `cryptoUser_${name.toLowerCase().trim()}`,
+    []
+  );
 
-  const saveUserData = useCallback((name: string) => {
-    const key = getUserKey(name);
-    const data: UserData = {
-      profile: userProfile!,
-      portfolios,
-      watchlist: globalWatchlist,
-    };
-    localStorage.setItem(key, JSON.stringify(data));
-  }, [userProfile, portfolios, globalWatchlist, getUserKey]);
+  const saveUserData = useCallback(
+    (name: string) => {
+      const key = getUserKey(name);
+      const data: UserData = {
+        profile: userProfile!,
+        portfolios,
+        watchlist: globalWatchlist,
+      };
+      localStorage.setItem(key, JSON.stringify(data));
+    },
+    [userProfile, portfolios, globalWatchlist, getUserKey]
+  );
 
-  const loadUserData = useCallback((name: string) => {
-    const key = getUserKey(name);
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      const data: UserData = JSON.parse(saved);
-      setUserProfile(data.profile);
-      setPortfolios(data.portfolios || []);
-      setGlobalWatchlist(data.watchlist || []);
-      if (data.portfolios.length > 0) {
-        setSelectedPortfolioId(data.portfolios[0].id);
+  const loadUserData = useCallback(
+    (name: string) => {
+      const key = getUserKey(name);
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const data: UserData = JSON.parse(saved);
+        setUserProfile(data.profile);
+        setPortfolios(data.portfolios || []);
+        setGlobalWatchlist(data.watchlist || []);
+        if (data.portfolios.length > 0) {
+          setSelectedPortfolioId(data.portfolios[0].id);
+        }
       }
-    }
-  }, [getUserKey]);
+    },
+    [getUserKey]
+  );
 
   // ====================== FETCH DATA ======================
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [coinsRes, searchRes, globalRes, trendingRes] = await Promise.all([
-          fetch(`${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=1h,24h,7d`),
-          fetch(`${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1`),
-          fetch(`${COINGECKO_BASE_URL}/global`),
-          fetch(`${COINGECKO_BASE_URL}/search/trending`),
-        ]);
-        const [coinsData, searchData, globalData, trendingData] = await Promise.all([
-          coinsRes.json(),
-          searchRes.json(),
-          globalRes.json(),
-          trendingRes.json(),
-        ]);
+        const [coinsRes, searchRes, globalRes, trendingRes] = await Promise.all(
+          [
+            fetch(
+              `${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=1h,24h,7d`
+            ),
+            fetch(
+              `${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1`
+            ),
+            fetch(`${COINGECKO_BASE_URL}/global`),
+            fetch(`${COINGECKO_BASE_URL}/search/trending`),
+          ]
+        );
+        const [coinsData, searchData, globalData, trendingData] =
+          await Promise.all([
+            coinsRes.json(),
+            searchRes.json(),
+            globalRes.json(),
+            trendingRes.json(),
+          ]);
         setCoins(coinsData);
         setAllCoinsSearch(searchData);
         setGlobal(globalData);
@@ -183,15 +200,21 @@ export default function Home() {
     );
   }, []);
 
-  const formatNumber = useCallback((num: number) =>
-    new Intl.NumberFormat("en-US", { notation: "compact" }).format(num), []);
+  const formatNumber = useCallback(
+    (num: number) =>
+      new Intl.NumberFormat("en-US", { notation: "compact" }).format(num),
+    []
+  );
 
-  const getChangeColor = useCallback((change: number) =>
-    change > 0
-      ? "text-green-400"
-      : change < 0
-      ? "text-red-400"
-      : "text-gray-400", []);
+  const getChangeColor = useCallback(
+    (change: number) =>
+      change > 0
+        ? "text-green-400"
+        : change < 0
+        ? "text-red-400"
+        : "text-gray-400",
+    []
+  );
 
   // ====================== PORTFOLIO CALC ======================
   const currentPortfolio = useMemo(
@@ -318,46 +341,67 @@ export default function Home() {
     setEditingHolding(null);
   }, []);
 
-  const saveProfile = useCallback((e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const newName = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
-    const bio = (form.elements.namedItem("bio") as HTMLTextAreaElement).value;
-    const file = (form.elements.namedItem("avatar") as HTMLInputElement).files?.[0];
-    if (!newName) return;
+  const saveProfile = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const form = e.currentTarget;
+      const newName = (
+        form.elements.namedItem("name") as HTMLInputElement
+      ).value.trim();
+      const bio = (form.elements.namedItem("bio") as HTMLTextAreaElement).value;
+      const file = (form.elements.namedItem("avatar") as HTMLInputElement)
+        .files?.[0];
 
-    const oldName = userProfile?.name;
-    const handleSave = (avatar: string) => {
-      const newProfile = { name: newName, bio, avatar };
-      setUserProfile(newProfile);
-      setAvatarPreview(null);
-      setShowProfileModal(false);
+      if (!newName) return;
 
-      if (oldName && oldName !== newName) {
-        const oldKey = getUserKey(oldName);
-        const oldData = localStorage.getItem(oldKey);
-        if (oldData) {
-          const data: UserData = JSON.parse(oldData);
-          data.profile = newProfile;
-          const newKey = getUserKey(newName);
-          localStorage.setItem(newKey, JSON.stringify(data));
+      const oldName = userProfile?.name;
+      const oldKey = oldName ? getUserKey(oldName) : null;
+
+      const handleSave = (avatar: string) => {
+        const newProfile: UserProfile = { name: newName, bio, avatar };
+        setUserProfile(newProfile);
+        setAvatarPreview(null);
+        setShowProfileModal(false);
+
+        const newKey = getUserKey(newName);
+        const data: UserData = {
+          profile: newProfile,
+          portfolios,
+          watchlist: globalWatchlist,
+        };
+        localStorage.setItem(newKey, JSON.stringify(data));
+
+        if (oldKey && oldKey !== newKey) {
           localStorage.removeItem(oldKey);
         }
-      }
-      localStorage.setItem("cryptoLastUser", newName);
-      loadUserData(newName);
-    };
 
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        handleSave(reader.result as string);
+        localStorage.setItem("cryptoLastUser", newName);
+        loadUserData(newName);
       };
-      reader.readAsDataURL(file);
-    } else {
-      handleSave(userProfile?.avatar || "");
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => handleSave(reader.result as string);
+        reader.readAsDataURL(file);
+      } else {
+        handleSave(userProfile?.avatar || "");
+      }
+    },
+    [userProfile, portfolios, globalWatchlist, getUserKey, loadUserData]
+  );
+
+  useEffect(() => {
+    if (!loading && userProfile) {
+      const key = getUserKey(userProfile.name);
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const data = JSON.parse(saved) as UserData;
+        data.portfolios = portfolios;
+        data.watchlist = globalWatchlist;
+        localStorage.setItem(key, JSON.stringify(data));
+      }
     }
-  }, [userProfile, getUserKey, loadUserData]);
+  }, [portfolios, globalWatchlist, userProfile, loading, getUserKey]);
 
   const signOut = useCallback(() => {
     setUserProfile(null);
@@ -431,8 +475,14 @@ export default function Home() {
             <p className="text-2xl">
               ${formatNumber(global.data.total_market_cap.usd)}
             </p>
-            <p className={getChangeColor(global.data.market_cap_change_percentage_24h_usd)}>
-              {global.data.market_cap_change_percentage_24h_usd?.toFixed(2) ?? "0.00"}%
+            <p
+              className={getChangeColor(
+                global.data.market_cap_change_percentage_24h_usd
+              )}
+            >
+              {global.data.market_cap_change_percentage_24h_usd?.toFixed(2) ??
+                "0.00"}
+              %
             </p>
           </div>
           <div className="bg-gray-800 p-4 rounded-lg">
@@ -536,7 +586,13 @@ export default function Home() {
                 </thead>
                 <tbody>
                   {currentPortfolio.holdings.map((h) => (
-                    <HoldingRow key={h.coinId} h={h} coinsMap={coinsMap} openEditHolding={openEditHolding} removeHolding={removeHolding} />
+                    <HoldingRow
+                      key={h.coinId}
+                      h={h}
+                      coinsMap={coinsMap}
+                      openEditHolding={openEditHolding}
+                      removeHolding={removeHolding}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -552,7 +608,9 @@ export default function Home() {
       )}
 
       {/* === LAZY LOADED SECTIONS === */}
-      <Suspense fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}>
+      <Suspense
+        fallback={<div className="h-96 bg-gray-800 rounded-lg animate-pulse" />}
+      >
         <WatchlistSection
           coins={coins}
           globalWatchlist={globalWatchlist}
@@ -562,7 +620,9 @@ export default function Home() {
         />
       </Suspense>
 
-      <Suspense fallback={<div className="h-64 bg-gray-800 rounded-lg animate-pulse" />}>
+      <Suspense
+        fallback={<div className="h-64 bg-gray-800 rounded-lg animate-pulse" />}
+      >
         <TrendingSection
           trending={trending}
           globalWatchlist={globalWatchlist}
@@ -570,7 +630,11 @@ export default function Home() {
         />
       </Suspense>
 
-      <Suspense fallback={<div className="h-screen bg-gray-800 rounded-lg animate-pulse" />}>
+      <Suspense
+        fallback={
+          <div className="h-screen bg-gray-800 rounded-lg animate-pulse" />
+        }
+      >
         <FullTableSection
           coins={coins}
           globalWatchlist={globalWatchlist}
@@ -619,7 +683,8 @@ export default function Home() {
                     const file = e.target.files?.[0];
                     if (file) {
                       const reader = new FileReader();
-                      reader.onloadend = () => setAvatarPreview(reader.result as string);
+                      reader.onloadend = () =>
+                        setAvatarPreview(reader.result as string);
                       reader.readAsDataURL(file);
                     }
                   }}
