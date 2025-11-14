@@ -17,12 +17,14 @@ interface TrendingSectionProps {
   trending: Trending | null;
   globalWatchlist: string[];
   toggleGlobalWatchlist: (id: string) => void;
+  onCoinClick?: (symbol: string) => void;
 }
 
 export default function TrendingSection({ 
   trending, 
   globalWatchlist, 
-  toggleGlobalWatchlist 
+  toggleGlobalWatchlist,
+  onCoinClick,
 }: TrendingSectionProps) {
   if (!trending) return null;
 
@@ -33,7 +35,8 @@ export default function TrendingSection({
         {trending.coins.slice(0, 8).map(({ item }) => (
           <div
             key={item.id}
-            className="bg-gray-800 p-4 rounded-lg flex items-center justify-between"
+            className="bg-gray-800 p-4 rounded-lg flex items-center justify-between cursor-pointer"
+            onClick={() => onCoinClick?.(item.symbol)}
           >
             <div className="flex items-center">
               <Image
@@ -52,7 +55,10 @@ export default function TrendingSection({
               </div>
             </div>
             <button
-              onClick={() => toggleGlobalWatchlist(item.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleGlobalWatchlist(item.id);
+              }}
               className="text-yellow-400"
             >
               {globalWatchlist.includes(item.id) ? "★" : "☆"}

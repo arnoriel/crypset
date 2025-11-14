@@ -20,6 +20,7 @@ interface FullTableSectionProps {
   toggleGlobalWatchlist: (id: string) => void;
   formatNumber: (num: number) => string;
   getChangeColor: (change: number) => string;
+  onCoinClick?: (symbol: string) => void;
 }
 
 export default function FullTableSection({
@@ -28,6 +29,7 @@ export default function FullTableSection({
   toggleGlobalWatchlist,
   formatNumber,
   getChangeColor,
+  onCoinClick,
 }: FullTableSectionProps) {
   return (
     <section className="mb-8">
@@ -49,7 +51,8 @@ export default function FullTableSection({
               {coins.map((coin) => (
                 <tr
                   key={coin.id}
-                  className="border-b border-gray-700 hover:bg-gray-800 transition"
+                  className="border-b border-gray-700 hover:bg-gray-800 transition cursor-pointer"
+                  onClick={() => onCoinClick?.(coin.symbol)}
                 >
                   <td className="p-3 flex items-center">
                     <Image
@@ -95,7 +98,10 @@ export default function FullTableSection({
                   </td>
                   <td className="p-3 text-center">
                     <button
-                      onClick={() => toggleGlobalWatchlist(coin.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleGlobalWatchlist(coin.id);
+                      }}
                       className="text-yellow-400 text-2xl hover:scale-110 transition"
                     >
                       {globalWatchlist.includes(coin.id) ? "★" : "☆"}

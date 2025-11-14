@@ -12,23 +12,7 @@ import {
 import AddHoldingModal from "./components/AddHoldingModal";
 import NewListModal from "./components/NewListModal";
 import dynamic from "next/dynamic";
-
-const WatchlistSection = dynamic(() => import("./components/WatchlistSection"), {
-  loading: () => (
-    <div className="h-64 bg-gray-800 rounded-lg animate-pulse" />
-  ),
-  ssr: false,
-});
-const TrendingSection = dynamic(() => import("./components/TrendingSection"), {
-  loading: () => <div className="h-64 bg-gray-800 rounded-lg animate-pulse" />,
-  ssr: false,
-});
-const FullTableSection = dynamic(() => import("./components/FullTableSection"), {
-  loading: () => (
-    <div className="h-screen bg-gray-800 rounded-lg animate-pulse" />
-  ),
-  ssr: false,
-});
+import { useRouter } from "next/navigation";
 
 // ====================== TYPES ======================
 interface Coin {
@@ -79,6 +63,25 @@ interface UserData {
   watchlist: string[];
 }
 const COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3";
+const CACHE_KEY = 'cryptoDataCache';
+const CACHE_TIME = 60000; // 1 minute in ms
+
+const WatchlistSection = dynamic(() => import("./components/WatchlistSection"), {
+  loading: () => (
+    <div className="h-64 bg-gray-800 rounded-lg animate-pulse" />
+  ),
+  ssr: false,
+});
+const TrendingSection = dynamic(() => import("./components/TrendingSection"), {
+  loading: () => <div className="h-64 bg-gray-800 rounded-lg animate-pulse" />,
+  ssr: false,
+});
+const FullTableSection = dynamic(() => import("./components/FullTableSection"), {
+  loading: () => (
+    <div className="h-screen bg-gray-800 rounded-lg animate-pulse" />
+  ),
+  ssr: false,
+});
 
 export default function Home() {
   // ====================== STATE ======================
@@ -100,12 +103,21 @@ export default function Home() {
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
+  const router = useRouter();
+
   // Optimize: Create a map for quick coin lookup
   const coinsMap = useMemo(() => {
     const map = new Map<string, Coin>();
     coins.forEach((coin) => map.set(coin.id, coin));
     return map;
   }, [coins]);
+
+  const handleCoinClick = useCallback(
+    (symbol: string) => {
+      router.push(`/marketview/${symbol.toUpperCase()}`);
+    },
+    [router]
+  );
 
   // ====================== LOCALSTORAGE HELPERS ======================
   const getUserKey = useCallback(
@@ -143,9 +155,26 @@ export default function Home() {
     [getUserKey]
   );
 
-  // ====================== FETCH DATA ======================
+  // ====================== FETCH DATA WITH CACHE ======================
   useEffect(() => {
     const fetchData = async () => {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_TIME) {
+          setCoins(data.coinsData);
+          setAllCoinsSearch(data.searchData);
+          setGlobal(data.globalData);
+          setTrending(data.trendingData);
+          setLoading(false);
+          const lastUser = localStorage.getItem("cryptoLastUser");
+          if (lastUser) {
+            loadUserData(lastUser);
+          }
+          return;
+        }
+      }
+
       try {
         const [coinsRes, searchRes, globalRes, trendingRes] = await Promise.all(
           [
@@ -170,6 +199,15 @@ export default function Home() {
         setAllCoinsSearch(searchData);
         setGlobal(globalData);
         setTrending(trendingData);
+
+        const cacheData = {
+          coinsData,
+          searchData,
+          globalData,
+          trendingData,
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ data: cacheData, timestamp: Date.now() }));
+
         const lastUser = localStorage.getItem("cryptoLastUser");
         if (lastUser) {
           loadUserData(lastUser);
@@ -592,6 +630,7 @@ export default function Home() {
                       coinsMap={coinsMap}
                       openEditHolding={openEditHolding}
                       removeHolding={removeHolding}
+                      onCoinClick={handleCoinClick}
                     />
                   ))}
                 </tbody>
@@ -617,6 +656,7 @@ export default function Home() {
           toggleGlobalWatchlist={toggleGlobalWatchlist}
           formatNumber={formatNumber}
           getChangeColor={getChangeColor}
+          onCoinClick={handleCoinClick}
         />
       </Suspense>
 
@@ -627,6 +667,7 @@ export default function Home() {
           trending={trending}
           globalWatchlist={globalWatchlist}
           toggleGlobalWatchlist={toggleGlobalWatchlist}
+          onCoinClick={handleCoinClick}
         />
       </Suspense>
 
@@ -641,6 +682,7 @@ export default function Home() {
           toggleGlobalWatchlist={toggleGlobalWatchlist}
           formatNumber={formatNumber}
           getChangeColor={getChangeColor}
+          onCoinClick={handleCoinClick}
         />
       </Suspense>
 
@@ -747,12 +789,14 @@ const HoldingRow = React.memo(function HoldingRow({
   h, 
   coinsMap, 
   openEditHolding, 
-  removeHolding 
+  removeHolding,
+  onCoinClick,
 }: { 
   h: Holding; 
   coinsMap: Map<string, Coin>; 
   openEditHolding: (h: Holding) => void; 
   removeHolding: (coinId: string) => void; 
+  onCoinClick?: (symbol: string) => void;
 }) {
   const coin = coinsMap.get(h.coinId);
   const cur = coin?.current_price || 0;
@@ -762,7 +806,10 @@ const HoldingRow = React.memo(function HoldingRow({
   const pnlPct = cost ? (pnl / cost) * 100 : 0;
   return (
     <tr className="border-b border-gray-700 hover:bg-gray-800">
-      <td className="p-2 flex items-center">
+      <td 
+        className="p-2 flex items-center cursor-pointer"
+        onClick={() => h.symbol && onCoinClick?.(h.symbol)}
+      >
         {h.image && <Image src={h.image} alt={h.name || ""} width={24} height={24} className="mr-2" loading="lazy" />}
         {h.name} ({h.symbol?.toUpperCase()})
       </td>
