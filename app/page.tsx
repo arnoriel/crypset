@@ -458,15 +458,16 @@ export default function Home() {
 
   // ====================== RENDER ======================
   return (
-    <div className="container mx-auto p-4 max-w-7xl">
+    // PENGATURAN PADDING CONTAINER UTAMA: p-2 di mobile, p-4 di desktop
+    <div className="container mx-auto p-2 md:p-4 max-w-7xl">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold">Crypset</h1>
-        <div className="flex items-center gap-4">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h1 className="text-2xl md:text-3xl font-bold">Crypset</h1>
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           {userProfile ? (
             <div className="flex items-center gap-3">
               {userProfile.avatar && (
-                <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-gray-600">
+                <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-gray-600">
                   <Image
                     src={userProfile.avatar}
                     alt="avatar"
@@ -476,72 +477,75 @@ export default function Home() {
                 </div>
               )}
               <div>
-                <p className="font-medium">{userProfile.name}</p>
-                <p className="text-sm text-gray-400">
+                <p className="font-medium text-sm md:text-base">{userProfile.name}</p>
+                {/* Bio disembunyikan di layar sangat kecil jika perlu */}
+                <p className="text-xs md:text-sm text-gray-400 hidden xs:block">
                   {userProfile.bio || "No bio"}
                 </p>
               </div>
-              <button
-                onClick={() => setShowProfileModal(true)}
-                className="text-blue-400 hover:text-blue-300"
-              >
-                <Edit2 size={20} />
-              </button>
-              <button
-                onClick={signOut}
-                className="text-red-400 hover:text-red-300"
-              >
-                <LogOut size={20} />
-              </button>
+              <div className="flex gap-2 ml-2">
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="text-blue-400 hover:text-blue-300"
+                >
+                  <Edit2 size={18} />
+                </button>
+                <button
+                  onClick={signOut}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
             </div>
           ) : (
             <button
               onClick={() => setShowProfileModal(true)}
-              className="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
+              className="bg-blue-600 px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base rounded hover:bg-blue-700 flex items-center gap-2 ml-auto"
             >
-              <User size={18} /> Sign In
+              <User size={16} /> Sign In
             </button>
           )}
         </div>
       </header>
 
-      {/* Global Stats */}
+      {/* Global Stats - OPTIMIZED FOR MOBILE (Grid 2 kolom) */}
       {global && (
-        <section className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-gray-800 p-4 rounded-lg">
-            <h2 className="text-lg font-semibold">Total Market Cap</h2>
-            <p className="text-2xl">
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-6">
+          <div className="bg-gray-800 p-3 md:p-4 rounded-lg">
+            <h2 className="text-xs text-gray-400 md:text-lg md:text-white font-semibold">Total Market Cap</h2>
+            <p className="text-base md:text-2xl font-bold">
               ${formatNumber(global.data.total_market_cap.usd)}
             </p>
             <p
-              className={getChangeColor(
+              className={`text-xs md:text-base ${getChangeColor(
                 global.data.market_cap_change_percentage_24h_usd
-              )}
+              )}`}
             >
               {global.data.market_cap_change_percentage_24h_usd?.toFixed(2) ??
                 "0.00"}
               %
             </p>
           </div>
-          <div className="bg-gray-800 p-4 rounded-lg">
-            <h2 className="text-lg font-semibold">24h Volume</h2>
-            <p className="text-2xl">
+          <div className="bg-gray-800 p-3 md:p-4 rounded-lg">
+            <h2 className="text-xs text-gray-400 md:text-lg md:text-white font-semibold">24h Volume</h2>
+            <p className="text-base md:text-2xl font-bold">
               ${formatNumber(global.data.total_volume.usd)}
             </p>
           </div>
-          <div className="bg-gray-800 p-4 rounded-lg">
-            <h2 className="text-lg font-semibold">BTC Dominance</h2>
-            <p className="text-2xl">
+          <div className="bg-gray-800 p-3 md:p-4 rounded-lg">
+            <h2 className="text-xs text-gray-400 md:text-lg md:text-white font-semibold">BTC Dominance</h2>
+            <p className="text-base md:text-2xl font-bold">
               {global.data.market_cap_percentage.btc.toFixed(2)}%
             </p>
           </div>
-          <div className="bg-gray-800 p-4 rounded-lg">
-            <h2 className="text-lg font-semibold">Portfolios</h2>
+          <div className="bg-gray-800 p-3 md:p-4 rounded-lg flex flex-col justify-center items-start">
+            <h2 className="text-xs text-gray-400 md:text-lg md:text-white font-semibold">Portfolios</h2>
             <button
               onClick={() => setShowNewListModal(true)}
-              className="text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-2"
+              className="text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1 text-sm md:text-base font-medium"
             >
-              <Plus size={16} /> New List
+              <Plus size={14} /> New List
             </button>
           </div>
         </section>
@@ -550,18 +554,19 @@ export default function Home() {
       {/* Portfolio Tabs & Summary */}
       {portfolios.length > 0 && (
         <section className="mb-8">
-          <div className="flex flex-wrap gap-3 border-b border-gray-700">
+          {/* Tabs - Scrollable secara horizontal di mobile */}
+          <div className="flex flex-nowrap overflow-x-auto gap-3 border-b border-gray-700 pb-1 no-scrollbar">
             {portfolios.map((p) => (
               <div
                 key={p.id}
-                className={`flex items-center gap-2 px-4 py-2 border-b-2 transition cursor-pointer ${
+                className={`flex items-center gap-2 px-3 py-2 border-b-2 transition cursor-pointer whitespace-nowrap flex-shrink-0 ${
                   selectedPortfolioId === p.id
                     ? "border-blue-500 text-blue-400"
                     : "border-transparent text-gray-400 hover:text-white"
                 }`}
                 onClick={() => setSelectedPortfolioId(p.id)}
               >
-                <span className="truncate max-w-48">{p.name}</span>
+                <span className="truncate max-w-[120px] md:max-w-xs text-sm md:text-base">{p.name}</span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -574,55 +579,62 @@ export default function Home() {
               </div>
             ))}
           </div>
+          
           {currentPortfolio && (
-            <div className="bg-gray-800 p-4 rounded-lg mt-4 flex flex-wrap gap-6">
-              <div>
-                <p className="text-gray-400">Total Value</p>
-                <p className="text-2xl font-bold">
-                  ${portfolioValue.toFixed(2)}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-400">Total Cost</p>
-                <p className="text-xl">${portfolioCost.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-gray-400">PnL</p>
-                <p
-                  className={`text-xl font-bold ${
-                    portfolioPnL >= 0 ? "text-green-400" : "text-red-400"
-                  }`}
+            <div className="bg-gray-800 p-3 md:p-4 rounded-lg mt-4">
+              {/* Grid layout untuk summary stats agar rapi di mobile */}
+              <div className="grid grid-cols-2 md:flex md:flex-wrap gap-4 items-end">
+                <div>
+                  <p className="text-xs md:text-sm text-gray-400">Total Value</p>
+                  <p className="text-lg md:text-2xl font-bold">
+                    ${portfolioValue.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs md:text-sm text-gray-400">Total Cost</p>
+                  <p className="text-base md:text-xl">${portfolioCost.toFixed(2)}</p>
+                </div>
+                <div className="col-span-2 md:col-span-1">
+                  <p className="text-xs md:text-sm text-gray-400">PnL</p>
+                  <p
+                    className={`text-lg md:text-xl font-bold ${
+                      portfolioPnL >= 0 ? "text-green-400" : "text-red-400"
+                    }`}
+                  >
+                    ${portfolioPnL.toFixed(2)} ({portfolioPnLPercent.toFixed(2)}%)
+                  </p>
+                </div>
+                
+                {/* Button Full Width di Mobile */}
+                <button
+                  onClick={() => {
+                    setEditingHolding(null);
+                    setShowAddHoldingModal(true);
+                  }}
+                  className="col-span-2 md:col-span-1 md:ml-auto bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 flex justify-center items-center gap-2 text-sm md:text-base"
                 >
-                  ${portfolioPnL.toFixed(2)} ({portfolioPnLPercent.toFixed(2)}%)
-                </p>
+                  <Plus size={18} /> Add Investment
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  setEditingHolding(null);
-                  setShowAddHoldingModal(true);
-                }}
-                className="ml-auto bg-blue-600 px-4 py-2 rounded hover:bg-blue-700 flex items-center gap-2"
-              >
-                <Plus size={18} /> Add Investment
-              </button>
             </div>
           )}
+
           {/* Holdings Table */}
           {currentPortfolio && currentPortfolio.holdings.length > 0 ? (
-            <div className="mt-6 overflow-x-auto">
-              <table className="w-full table-auto">
-                <thead className="bg-gray-800">
+            <div className="mt-4 md:mt-6 overflow-x-auto">
+              <table className="w-full table-auto whitespace-nowrap">
+                <thead className="bg-gray-800 text-xs md:text-sm uppercase text-gray-400">
                   <tr>
                     <th className="p-2 text-left">Asset</th>
-                    <th className="p-2 text-right">Holdings</th>
-                    <th className="p-2 text-right">Avg Buy</th>
-                    <th className="p-2 text-right">Current Price</th>
+                    <th className="p-2 text-right hidden sm:table-cell">Holdings</th>
+                    <th className="p-2 text-right hidden md:table-cell">Avg Buy</th>
+                    <th className="p-2 text-right">Price</th>
                     <th className="p-2 text-right">Value</th>
                     <th className="p-2 text-right">PnL</th>
                     <th className="p-2"></th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="text-sm md:text-base">
                   {currentPortfolio.holdings.map((h) => (
                     <HoldingRow
                       key={h.coinId}
@@ -638,9 +650,10 @@ export default function Home() {
             </div>
           ) : (
             currentPortfolio && (
-              <p className="text-gray-400 mt-4">
-                No holdings yet. Click &quot;Add Investment&quot; to start.
-              </p>
+              <div className="text-center py-8 text-gray-400 bg-gray-800/50 rounded-lg mt-4 border border-dashed border-gray-700">
+                <p>No holdings yet.</p>
+                <p className="text-sm">Tap Add Investment to start tracking.</p>
+              </div>
             )
           )}
         </section>
@@ -687,40 +700,41 @@ export default function Home() {
       </Suspense>
 
       {/* ==================== MODALS ==================== */}
+      {/* Modal Profile sedikit dirapikan paddingnya */}
       {showProfileModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-2xl mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 p-5 md:p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl md:text-2xl mb-4">
               {userProfile ? "Edit Profile" : "Create Profile"}
             </h2>
             <form onSubmit={saveProfile}>
               <div className="mb-4">
-                <label className="block mb-1">Name</label>
+                <label className="block mb-1 text-sm text-gray-400">Name</label>
                 <input
                   name="name"
                   required
-                  className="w-full bg-gray-700 px-3 py-2 rounded"
+                  className="w-full bg-gray-700 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   defaultValue={userProfile?.name || ""}
                   placeholder="Your name"
                 />
               </div>
               <div className="mb-4">
-                <label className="block mb-1">Bio</label>
+                <label className="block mb-1 text-sm text-gray-400">Bio</label>
                 <textarea
                   name="bio"
                   rows={3}
-                  className="w-full bg-gray-700 px-3 py-2 rounded"
+                  className="w-full bg-gray-700 px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   defaultValue={userProfile?.bio || ""}
                   placeholder="Tell us about yourself"
                 />
               </div>
               <div className="mb-4">
-                <label className="block mb-1">Profile Picture</label>
+                <label className="block mb-1 text-sm text-gray-400">Profile Picture</label>
                 <input
                   type="file"
                   name="avatar"
                   accept="image/*"
-                  className="w-full mb-3"
+                  className="w-full mb-3 text-sm text-gray-400"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
@@ -732,8 +746,8 @@ export default function Home() {
                   }}
                 />
                 {(avatarPreview || userProfile?.avatar) && (
-                  <div className="flex justify-center my-6">
-                    <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-gray-700 shadow-2xl">
+                  <div className="flex justify-center my-4">
+                    <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-gray-700 shadow-2xl">
                       <Image
                         src={avatarPreview || userProfile?.avatar || ""}
                         alt="Preview"
@@ -747,7 +761,7 @@ export default function Home() {
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  className="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700"
+                  className="flex-1 bg-blue-600 px-4 py-2 rounded hover:bg-blue-700"
                 >
                   Save
                 </button>
@@ -757,7 +771,7 @@ export default function Home() {
                     setShowProfileModal(false);
                     setAvatarPreview(null);
                   }}
-                  className="bg-gray-600 px-4 py-2 rounded hover:bg-gray-700"
+                  className="flex-1 bg-gray-600 px-4 py-2 rounded hover:bg-gray-700"
                 >
                   Cancel
                 </button>
@@ -784,7 +798,7 @@ export default function Home() {
   );
 }
 
-// === HoldingRow dipindah ke sini biar page.tsx ga import Recharts ===
+// === HoldingRow Updated for Mobile ===
 const HoldingRow = React.memo(function HoldingRow({ 
   h, 
   coinsMap, 
@@ -805,28 +819,37 @@ const HoldingRow = React.memo(function HoldingRow({
   const pnl = value - cost;
   const pnlPct = cost ? (pnl / cost) * 100 : 0;
   return (
-    <tr className="border-b border-gray-700 hover:bg-gray-800">
+    <tr className="border-b border-gray-700 hover:bg-gray-800 text-sm">
       <td 
         className="p-2 flex items-center cursor-pointer"
         onClick={() => h.symbol && onCoinClick?.(h.symbol)}
       >
-        {h.image && <Image src={h.image} alt={h.name || ""} width={24} height={24} className="mr-2" loading="lazy" />}
-        {h.name} ({h.symbol?.toUpperCase()})
+        {h.image && <Image src={h.image} alt={h.name || ""} width={20} height={20} className="mr-2 rounded-full" loading="lazy" />}
+        <div className="flex flex-col sm:flex-row sm:gap-1">
+          <span className="font-bold">{h.symbol?.toUpperCase()}</span>
+          <span className="text-gray-400 hidden sm:inline">{h.name}</span>
+        </div>
       </td>
-      <td className="p-2 text-right">{h.amount}</td>
-      <td className="p-2 text-right">${h.buyPrice.toFixed(2)}</td>
-      <td className="p-2 text-right">${cur.toFixed(2)}</td>
-      <td className="p-2 text-right">${value.toFixed(2)}</td>
+      {/* Sembunyikan kolom kurang penting di mobile */}
+      <td className="p-2 text-right hidden sm:table-cell">{h.amount}</td>
+      <td className="p-2 text-right hidden md:table-cell">${h.buyPrice.toFixed(2)}</td>
+      <td className="p-2 text-right">${cur.toLocaleString()}</td>
+      <td className="p-2 text-right font-medium">${value.toLocaleString()}</td>
       <td className={`p-2 text-right ${pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-        ${pnl.toFixed(2)} ({pnlPct.toFixed(2)}%)
+        <div className="flex flex-col items-end">
+          <span>${pnl.toFixed(2)}</span>
+          <span className="text-xs opacity-80">{pnlPct.toFixed(1)}%</span>
+        </div>
       </td>
-      <td className="p-2 text-center flex gap-2 justify-center">
-        <button onClick={() => openEditHolding(h)} className="text-blue-400">
-          <Edit2 size={16} />
-        </button>
-        <button onClick={() => removeHolding(h.coinId)} className="text-red-400">
-          <Trash2 size={16} />
-        </button>
+      <td className="p-2 text-center">
+        <div className="flex gap-2 justify-end">
+          <button onClick={() => openEditHolding(h)} className="text-blue-400 p-1">
+            <Edit2 size={14} />
+          </button>
+          <button onClick={() => removeHolding(h.coinId)} className="text-red-400 p-1">
+            <Trash2 size={14} />
+          </button>
+        </div>
       </td>
     </tr>
   );
