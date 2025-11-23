@@ -1,13 +1,13 @@
 "use client";
-import React, { useEffect, useState, useMemo, useCallback, Suspense } from "react";
+import React, { useEffect, useState, useMemo, useCallback, Suspense, useRef } from "react";
 import Image from "next/image";
 import {
   Plus,
   X,
   Edit2,
   Trash2,
-  LogOut,
   User,
+  ChevronDown,
 } from "lucide-react";
 import AddHoldingModal from "./components/AddHoldingModal";
 import NewListModal from "./components/NewListModal";
@@ -96,12 +96,21 @@ export default function Home() {
   );
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // State Greeting (Fitur Baru)
+  const [greeting, setGreeting] = useState("");
+  const [currentDate, setCurrentDate] = useState("");
+  
   // Modal states
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNewListModal, setShowNewListModal] = useState(false);
   const [showAddHoldingModal, setShowAddHoldingModal] = useState(false);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+  // Dropdown state
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const router = useRouter();
 
@@ -118,6 +127,47 @@ export default function Home() {
     },
     [router]
   );
+
+  // ====================== EFFECT GREETING TIME ======================
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      
+      const dateOptions: Intl.DateTimeFormatOptions = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      };
+      setCurrentDate(now.toLocaleDateString('en-US', dateOptions));
+
+      if (hour >= 5 && hour < 12) {
+        setGreeting("Good Morning");
+      } else if (hour >= 12 && hour < 17) {
+        setGreeting("Good Afternoon");
+      } else if (hour >= 17 && hour < 21) {
+        setGreeting("Good Evening");
+      } else {
+        setGreeting("Good Night");
+      }
+    };
+
+    updateTime();
+  }, []);
+
+  // ====================== CLICK OUTSIDE LISTENER ======================
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // ====================== LOCALSTORAGE HELPERS ======================
   const getUserKey = useCallback(
@@ -446,6 +496,7 @@ export default function Home() {
     setPortfolios([]);
     setGlobalWatchlist([]);
     setSelectedPortfolioId(null);
+    setIsProfileOpen(false);
     localStorage.removeItem("cryptoLastUser");
   }, []);
 
@@ -458,50 +509,64 @@ export default function Home() {
 
   // ====================== RENDER ======================
   return (
-    // PENGATURAN PADDING CONTAINER UTAMA: p-2 di mobile, p-4 di desktop
     <div className="container mx-auto p-2 md:p-4 max-w-7xl">
       {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+      <header className="flex justify-between items-center mb-6 gap-4">
         <h1 className="text-2xl md:text-3xl font-bold">Crypset</h1>
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+        
+        <div className="flex items-center gap-3">
           {userProfile ? (
-            <div className="flex items-center gap-3">
-              {userProfile.avatar && (
-                <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-gray-600">
-                  <Image
-                    src={userProfile.avatar}
-                    alt="avatar"
-                    fill
-                    className="object-cover"
-                  />
+            <div className="relative" ref={profileRef}>
+              <button 
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="flex items-center gap-2 md:gap-3 hover:bg-gray-800 p-1 md:p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              >
+                {userProfile.avatar && (
+                  <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-gray-600 flex-shrink-0">
+                    <Image
+                      src={userProfile.avatar}
+                      alt="avatar"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div className="text-left">
+                  <p className="font-medium text-sm md:text-base flex items-center gap-1 md:gap-2">
+                    <span className="max-w-[100px] truncate">{userProfile.name}</span>
+                    <ChevronDown size={14} className={`transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} />
+                  </p>
+                  <p className="text-xs md:text-sm text-gray-400 hidden sm:block truncate max-w-[150px]">
+                    {userProfile.bio || "Crypto Enthusiast"}
+                  </p>
+                </div>
+              </button>
+
+              {isProfileOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50 overflow-hidden animation-fade-in">
+                  <button
+                    onClick={() => {
+                      setShowProfileModal(true);
+                      setIsProfileOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-sm text-gray-200 hover:bg-gray-700 flex items-center gap-2 transition-colors"
+                  >
+                    <Edit2 size={16} className="text-blue-400" /> Edit Profile
+                  </button>
+                  <div className="border-t border-gray-700"></div>
+                  <button
+                    onClick={signOut}
+                    className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-gray-700/80 hover:text-red-300 flex items-center gap-2 transition-colors"
+                  >
+                    <Trash2 size={16} /> Delete Profile
+                  </button>
                 </div>
               )}
-              <div>
-                <p className="font-medium text-sm md:text-base">{userProfile.name}</p>
-                {/* Bio disembunyikan di layar sangat kecil jika perlu */}
-                <p className="text-xs md:text-sm text-gray-400 hidden xs:block">
-                  {userProfile.bio || "No bio"}
-                </p>
-              </div>
-              <div className="flex gap-2 ml-2">
-                <button
-                  onClick={() => setShowProfileModal(true)}
-                  className="text-blue-400 hover:text-blue-300"
-                >
-                  <Edit2 size={18} />
-                </button>
-                <button
-                  onClick={signOut}
-                  className="text-red-400 hover:text-red-300"
-                >
-                  <LogOut size={18} />
-                </button>
-              </div>
             </div>
           ) : (
             <button
               onClick={() => setShowProfileModal(true)}
-              className="bg-blue-600 px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base rounded hover:bg-blue-700 flex items-center gap-2 ml-auto"
+              className="bg-blue-600 px-3 py-1.5 md:px-4 md:py-2 text-sm md:text-base rounded hover:bg-blue-700 flex items-center gap-2"
             >
               <User size={16} /> Sign In
             </button>
@@ -509,7 +574,27 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Global Stats - OPTIMIZED FOR MOBILE (Grid 2 kolom) */}
+      {/* === HERO GREETING SECTION === */}
+      {/* Menampilkan waktu dan greeting sesuai waktu lokal */}
+      <section className="mb-8 mt-2">
+        <div className="flex flex-col justify-center">
+          <p className="text-gray-400 text-sm md:text-base font-medium mb-1">
+            {currentDate}
+          </p>
+          <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight">
+            {greeting}
+            <span className="text-gray-500">
+              {userProfile ? `, ${userProfile.name.split(' ')[0]}` : ''}
+            </span>
+            <span className="text-blue-500">.</span>
+          </h1>
+          <p className="text-gray-400 mt-2 text-sm md:text-lg max-w-2xl">
+            Here is what happening with your portfolio and the market today.
+          </p>
+        </div>
+      </section>
+
+      {/* Global Stats */}
       {global && (
         <section className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-6">
           <div className="bg-gray-800 p-3 md:p-4 rounded-lg">
@@ -554,7 +639,6 @@ export default function Home() {
       {/* Portfolio Tabs & Summary */}
       {portfolios.length > 0 && (
         <section className="mb-8">
-          {/* Tabs - Scrollable secara horizontal di mobile */}
           <div className="flex flex-nowrap overflow-x-auto gap-3 border-b border-gray-700 pb-1 no-scrollbar">
             {portfolios.map((p) => (
               <div
@@ -582,7 +666,6 @@ export default function Home() {
           
           {currentPortfolio && (
             <div className="bg-gray-800 p-3 md:p-4 rounded-lg mt-4">
-              {/* Grid layout untuk summary stats agar rapi di mobile */}
               <div className="grid grid-cols-2 md:flex md:flex-wrap gap-4 items-end">
                 <div>
                   <p className="text-xs md:text-sm text-gray-400">Total Value</p>
@@ -604,8 +687,6 @@ export default function Home() {
                     ${portfolioPnL.toFixed(2)} ({portfolioPnLPercent.toFixed(2)}%)
                   </p>
                 </div>
-                
-                {/* Button Full Width di Mobile */}
                 <button
                   onClick={() => {
                     setEditingHolding(null);
@@ -619,7 +700,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Holdings Table */}
           {currentPortfolio && currentPortfolio.holdings.length > 0 ? (
             <div className="mt-4 md:mt-6 overflow-x-auto">
               <table className="w-full table-auto whitespace-nowrap">
@@ -700,7 +780,7 @@ export default function Home() {
       </Suspense>
 
       {/* ==================== MODALS ==================== */}
-      {/* Modal Profile sedikit dirapikan paddingnya */}
+      {/* ... Code Modal Sama seperti sebelumnya ... */}
       {showProfileModal && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 p-5 md:p-6 rounded-lg w-full max-w-md">
@@ -798,7 +878,7 @@ export default function Home() {
   );
 }
 
-// === HoldingRow Updated for Mobile ===
+// === HoldingRow (Tidak berubah) ===
 const HoldingRow = React.memo(function HoldingRow({ 
   h, 
   coinsMap, 
@@ -830,7 +910,6 @@ const HoldingRow = React.memo(function HoldingRow({
           <span className="text-gray-400 hidden sm:inline">{h.name}</span>
         </div>
       </td>
-      {/* Sembunyikan kolom kurang penting di mobile */}
       <td className="p-2 text-right hidden sm:table-cell">{h.amount}</td>
       <td className="p-2 text-right hidden md:table-cell">${h.buyPrice.toFixed(2)}</td>
       <td className="p-2 text-right">${cur.toLocaleString()}</td>
