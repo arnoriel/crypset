@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useEffect, useState, useMemo, useCallback, Suspense, useRef } from "react";
 import Image from "next/image";
 import {
@@ -28,6 +29,7 @@ interface Coin {
   total_volume: number;
   sparkline_in_7d: { price: number[] };
 }
+
 interface GlobalData {
   data: {
     total_market_cap: { usd: number };
@@ -36,9 +38,11 @@ interface GlobalData {
     market_cap_change_percentage_24h_usd: number;
   };
 }
+
 interface Trending {
   coins: { item: { id: string; name: string; symbol: string; thumb: string } }[];
 }
+
 interface Holding {
   coinId: string;
   amount: number;
@@ -47,21 +51,27 @@ interface Holding {
   symbol?: string;
   image?: string;
 }
+
 interface Portfolio {
   id: string;
   name: string;
   holdings: Holding[];
 }
+
 interface UserProfile {
   name: string;
   bio: string;
   avatar: string;
 }
+
 interface UserData {
   profile: UserProfile;
   portfolios: Portfolio[];
   watchlist: string[];
 }
+
+type MarketMode = "crypto" | "stocks";
+
 const COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3";
 const CACHE_KEY = 'cryptoDataCache';
 const CACHE_TIME = 60000; // 1 minute in ms
@@ -72,10 +82,12 @@ const WatchlistSection = dynamic(() => import("./components/WatchlistSection"), 
   ),
   ssr: false,
 });
+
 const TrendingSection = dynamic(() => import("./components/TrendingSection"), {
   loading: () => <div className="h-64 bg-gray-800 rounded-lg animate-pulse" />,
   ssr: false,
 });
+
 const FullTableSection = dynamic(() => import("./components/FullTableSection"), {
   loading: () => (
     <div className="h-screen bg-gray-800 rounded-lg animate-pulse" />
@@ -91,26 +103,29 @@ export default function Home() {
   const [trending, setTrending] = useState<Trending | null>(null);
   const [globalWatchlist, setGlobalWatchlist] = useState<string[]>([]);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(
-    null
-  );
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  
+ 
   // State Greeting (Fitur Baru)
   const [greeting, setGreeting] = useState("");
   const [currentDate, setCurrentDate] = useState("");
-  
+ 
   // Modal states
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showNewListModal, setShowNewListModal] = useState(false);
   const [showAddHoldingModal, setShowAddHoldingModal] = useState(false);
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-
+  
   // Dropdown state
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // ====================== MARKET SWITCHER STATE ======================
+  const [marketMode, setMarketMode] = useState<MarketMode>("crypto");
+  const [showTransition, setShowTransition] = useState(false);
+  const [transitionPhase, setTransitionPhase] = useState<"fadeIn" | "show" | "fadeOut">("fadeIn");
 
   const router = useRouter();
 
@@ -128,17 +143,42 @@ export default function Home() {
     [router]
   );
 
+  // ====================== MARKET MODE SWITCHER HANDLER ======================
+  const handleMarketSwitch = (mode: MarketMode) => {
+    if (mode === marketMode) return;
+    
+    setShowTransition(true);
+    setTransitionPhase("fadeIn");
+    
+    // Phase 1: Fade in overlay (300ms)
+    setTimeout(() => {
+      setTransitionPhase("show");
+      setMarketMode(mode);
+    }, 300);
+    
+    // Phase 2: Show text animations (1500ms)
+    setTimeout(() => {
+      setTransitionPhase("fadeOut");
+    }, 1800);
+    
+    // Phase 3: Fade out everything (800ms)
+    setTimeout(() => {
+      setShowTransition(false);
+      setTransitionPhase("fadeIn");
+    }, 2600);
+  };
+
   // ====================== EFFECT GREETING TIME ======================
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
       const hour = now.getHours();
-      
-      const dateOptions: Intl.DateTimeFormatOptions = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+     
+      const dateOptions: Intl.DateTimeFormatOptions = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       };
       setCurrentDate(now.toLocaleDateString('en-US', dateOptions));
 
@@ -163,6 +203,7 @@ export default function Home() {
         setIsProfileOpen(false);
       }
     }
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -217,6 +258,7 @@ export default function Home() {
           setGlobal(data.globalData);
           setTrending(data.trendingData);
           setLoading(false);
+
           const lastUser = localStorage.getItem("cryptoLastUser");
           if (lastUser) {
             loadUserData(lastUser);
@@ -238,6 +280,7 @@ export default function Home() {
             fetch(`${COINGECKO_BASE_URL}/search/trending`),
           ]
         );
+
         const [coinsData, searchData, globalData, trendingData] =
           await Promise.all([
             coinsRes.json(),
@@ -245,6 +288,7 @@ export default function Home() {
             globalRes.json(),
             trendingRes.json(),
           ]);
+
         setCoins(coinsData);
         setAllCoinsSearch(searchData);
         setGlobal(globalData);
@@ -262,12 +306,14 @@ export default function Home() {
         if (lastUser) {
           loadUserData(lastUser);
         }
+
         setLoading(false);
       } catch (e) {
         console.error(e);
         setLoading(false);
       }
     };
+
     fetchData();
   }, [loadUserData]);
 
@@ -319,6 +365,7 @@ export default function Home() {
           portfolioPnL: 0,
           portfolioPnLPercent: 0,
         };
+
       let value = 0,
         cost = 0;
       currentPortfolio.holdings.forEach((h) => {
@@ -327,8 +374,10 @@ export default function Home() {
         value += price * h.amount;
         cost += h.buyPrice * h.amount;
       });
+
       const pnl = value - cost;
       const pct = cost ? (pnl / cost) * 100 : 0;
+
       return {
         portfolioValue: value,
         portfolioCost: cost,
@@ -340,6 +389,7 @@ export default function Home() {
   // ====================== HANDLERS ======================
   const createPortfolio = useCallback((name: string) => {
     if (!name.trim()) return;
+
     const newPort: Portfolio = {
       id: Date.now().toString(),
       name,
@@ -377,6 +427,7 @@ export default function Home() {
   const handleSaveHolding = useCallback(
     (holding: Holding) => {
       if (!currentPortfolio) return;
+
       if (editingHolding) {
         setPortfolios((prev) =>
           prev.map((p) =>
@@ -399,6 +450,7 @@ export default function Home() {
           )
         );
       }
+
       setEditingHolding(null);
       setShowAddHoldingModal(false);
     },
@@ -408,6 +460,7 @@ export default function Home() {
   const removeHolding = useCallback(
     (coinId: string) => {
       if (!currentPortfolio) return;
+
       setPortfolios((prev) =>
         prev.map((p) =>
           p.id === currentPortfolio.id
@@ -513,11 +566,11 @@ export default function Home() {
       {/* Header */}
       <header className="flex justify-between items-center mb-6 gap-4">
         <h1 className="text-2xl md:text-3xl font-bold">Crypset</h1>
-        
+       
         <div className="flex items-center gap-3">
           {userProfile ? (
             <div className="relative" ref={profileRef}>
-              <button 
+              <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center gap-2 md:gap-3 hover:bg-gray-800 p-1 md:p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               >
@@ -574,8 +627,64 @@ export default function Home() {
         </div>
       </header>
 
+      {/* ====================== MARKET MODE SWITCHER ====================== */}
+      <div className="flex justify-center mb-6">
+        <div className="inline-flex bg-gray-800 p-1.5 rounded-full shadow-lg border border-gray-700">
+          <button
+            onClick={() => handleMarketSwitch("crypto")}
+            className={`relative px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
+              marketMode === "crypto"
+                ? "text-white"
+                : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            {marketMode === "crypto" && (
+              <span className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full transition-all duration-300" />
+            )}
+            <span className="relative z-10">Crypto</span>
+          </button>
+          
+          <button
+            onClick={() => handleMarketSwitch("stocks")}
+            className={`relative px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
+              marketMode === "stocks"
+                ? "text-white"
+                : "text-gray-400 hover:text-gray-200"
+            }`}
+          >
+            {marketMode === "stocks" && (
+              <span className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full transition-all duration-300" />
+            )}
+            <span className="relative z-10">Stocks</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ====================== TRANSITION OVERLAY ====================== */}
+      {showTransition && (
+        <div
+          className={`fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center transition-opacity duration-300 ${
+            transitionPhase === "fadeIn" ? "opacity-0" : transitionPhase === "show" ? "opacity-100" : "opacity-0"
+          }`}
+          style={{
+            transitionDuration: transitionPhase === "fadeOut" ? "800ms" : "300ms"
+          }}
+        >
+          <div className={`${transitionPhase === "show" ? "animate-crypsetAppear" : "opacity-0"}`}>
+            <h1 className="text-7xl md:text-9xl font-bold text-white mb-4">
+              Crypset
+            </h1>
+          </div>
+          
+          <div className={`${transitionPhase === "show" ? "animate-modeAppear" : "opacity-0"}`}>
+            <p className="text-3xl md:text-5xl font-semibold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+              {marketMode === "crypto" ? "Crypto" : "Stocks"}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* === HERO GREETING SECTION === */}
-      {/* Menampilkan waktu dan greeting sesuai waktu lokal */}
       <section className="mb-8 mt-2">
         <div className="flex flex-col justify-center">
           <p className="text-gray-400 text-sm md:text-base font-medium mb-1">
@@ -612,18 +721,21 @@ export default function Home() {
               %
             </p>
           </div>
+
           <div className="bg-gray-800 p-3 md:p-4 rounded-lg">
             <h2 className="text-xs text-gray-400 md:text-lg md:text-white font-semibold">24h Volume</h2>
             <p className="text-base md:text-2xl font-bold">
               ${formatNumber(global.data.total_volume.usd)}
             </p>
           </div>
+
           <div className="bg-gray-800 p-3 md:p-4 rounded-lg">
             <h2 className="text-xs text-gray-400 md:text-lg md:text-white font-semibold">BTC Dominance</h2>
             <p className="text-base md:text-2xl font-bold">
               {global.data.market_cap_percentage.btc.toFixed(2)}%
             </p>
           </div>
+
           <div className="bg-gray-800 p-3 md:p-4 rounded-lg flex flex-col justify-center items-start">
             <h2 className="text-xs text-gray-400 md:text-lg md:text-white font-semibold">Portfolios</h2>
             <button
@@ -663,7 +775,7 @@ export default function Home() {
               </div>
             ))}
           </div>
-          
+         
           {currentPortfolio && (
             <div className="bg-gray-800 p-3 md:p-4 rounded-lg mt-4">
               <div className="grid grid-cols-2 md:flex md:flex-wrap gap-4 items-end">
@@ -780,7 +892,6 @@ export default function Home() {
       </Suspense>
 
       {/* ==================== MODALS ==================== */}
-      {/* ... Code Modal Sama seperti sebelumnya ... */}
       {showProfileModal && (
         <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 p-5 md:p-6 rounded-lg w-full max-w-md">
@@ -878,18 +989,18 @@ export default function Home() {
   );
 }
 
-// === HoldingRow (Tidak berubah) ===
-const HoldingRow = React.memo(function HoldingRow({ 
-  h, 
-  coinsMap, 
-  openEditHolding, 
+// === HoldingRow ===
+const HoldingRow = React.memo(function HoldingRow({
+  h,
+  coinsMap,
+  openEditHolding,
   removeHolding,
   onCoinClick,
-}: { 
-  h: Holding; 
-  coinsMap: Map<string, Coin>; 
-  openEditHolding: (h: Holding) => void; 
-  removeHolding: (coinId: string) => void; 
+}: {
+  h: Holding;
+  coinsMap: Map<string, Coin>;
+  openEditHolding: (h: Holding) => void;
+  removeHolding: (coinId: string) => void;
   onCoinClick?: (symbol: string) => void;
 }) {
   const coin = coinsMap.get(h.coinId);
@@ -898,9 +1009,10 @@ const HoldingRow = React.memo(function HoldingRow({
   const cost = h.buyPrice * h.amount;
   const pnl = value - cost;
   const pnlPct = cost ? (pnl / cost) * 100 : 0;
+
   return (
     <tr className="border-b border-gray-700 hover:bg-gray-800 text-sm">
-      <td 
+      <td
         className="p-2 flex items-center cursor-pointer"
         onClick={() => h.symbol && onCoinClick?.(h.symbol)}
       >

@@ -18,6 +18,25 @@ module.exports = {
       transitionProperty: {
         'height': 'height',
       },
+      animation: {
+        "crypsetAppear": "crypsetAppear 1.2s cubic-bezier(0.16, 1, 0.3, 1)",
+        "modeAppear": "modeAppear 1.4s cubic-bezier(0.16, 1, 0.3, 1)",
+        "fadeOutOverlay": "fadeOutOverlay 0.8s ease-in forwards",
+      },
+      keyframes: {
+        crypsetAppear: {
+          "0%": { opacity: "0", transform: "translateY(80px) scale(0.9)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        modeAppear: {
+          "0%": { opacity: "0", transform: "translateY(60px)" },
+          "70%": { opacity: "1", transform: "translateY(-20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        fadeOutOverlay: {
+          to: { opacity: "1" },
+        },
+      },
     },
   },
 };
